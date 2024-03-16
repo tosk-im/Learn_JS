@@ -6,7 +6,7 @@
 </head>
 <body>
 <script>
-    function pow(x, n) {
+    /*function pow(x, n) {
         let x1 = prompt("x?")
         let n1 = prompt("n?")
         if (n1>0 && n1%1===0) {
@@ -16,7 +16,176 @@
             alert ("Степень \`${n1}`\ не поддерживается, используйте натуральное число")
         }
     }
-    pow ()
+    pow ()*/
+    /*let user = prompt ("Введите число выше 100", "")
+  outer: while (user <= "100" && userPut !== null) {
+      user++
+      prompt ("Введите число выше 100", "");
+      if (!user) break outer;
+  }*/
+
+    /* outer: for (let input = 0; input <=100; input++) {
+         let input = prompt ("Введите число выше 100", "0");
+         if (!input || input > 100) break outer;
+         else prompt ("Введите число выше 100", "0")
+     }*/
+
+    /*let input
+        do {
+            input = prompt ("Введите число выше 100", "0");
+    }
+    while (input <= 100 && input);*/
+    /*outer: for (let i = 2; i <= 10; i++) {
+        for (let j = 2; j < i; j++) {
+            if (i % j === 0) continue outer;
+        }
+        alert (i);
+    }*/
+    /*let browser = prompt ("Каким браузером Вы пользуетесь?", "")
+    if (browser === 'Edge') {
+        alert("У тебя есть преимущество!")
+    } else if (browser === 'Chrome'
+        || browser === 'Firefox'
+        || browser === 'Safari'
+        || browser === 'Opera') {
+        alert("Хорошо, мы тоже поддерживаем эти браузеры")
+    } else {
+        alert("Мы надеемся, что эта страница выглядит нормально!")
+    }*/
+    /*const number = prompt('Введите число между 0 и 3', '')
+    switch (number) {
+        case '0':
+            alert( 'Вы ввели число 0' );
+            break;
+        case '1':
+            alert( 'Вы ввели число 1' );
+            break;
+        case '2':
+        case '3':
+            alert( 'Вы ввели число 2, а может и 3' );
+            break;
+        case '':
+        case null:
+            alert( 'Вы не ввели число');
+            break;
+    }*/
+
+    /*function showMessage(from, text) {
+
+        from = '*' + from + '*'; // немного украсим "from"
+
+        alert( from + ': ' + text );
+    }
+
+    let from = "Аня";
+
+    showMessage(from, "Привет"); // *Аня*: Привет
+
+    // значение "from" осталось прежним, функция изменила значение локальной переменной
+    alert( from );*/
+    /*function checkAge(age) {
+        if (age > 18) {
+            return true;
+        }
+        return confirm('Родители разрешили?');
+    }
+    let age = prompt('Сколько вам лет?', 18);
+    if ( checkAge(age) ) {
+        alert( 'Доступ получен' );
+    } else {
+        alert( 'Доступ закрыт' );
+    }*/
+    /*function checkAge(age) {
+       return (age > 18) ? true : confirm ('Родители разрешили?')
+    }
+    alert (checkAge(10))*/
+
+    /*function checkAge(age) {
+       return (age > 18) || confirm ('Родители разрешили?')
+    }
+    alert (checkAge(10))*/
+    /*function min (a,b) {
+        if (a < b || a === b) {
+            alert(a)
+        } else if (a > b) {
+            alert(b)
+        }
+    }*/
+    /*function min (a,b) {
+        (a < b || a === b) ? alert (a) : alert (b);
+    }
+    min (1, 1)*/
+    /*function pow (x, n)  {
+        let x1 = prompt ("x?", "")
+        let n1 = prompt ("n?", "")
+        if (n1 > 0 && n1 % 1 === 0) {
+            alert (x1 ** n1)
+        } else {
+            alert ('mistake')
+        }
+    }
+    pow ()*/
+    /*       function welcome() {
+               let age = prompt("Сколько Вам лет?", 18);
+               if (age < 18) {
+                   alert("Привет!");
+               } else {
+                       alert("Здравствуйте!");
+                   }
+               }
+       welcome();*/
+    /* let ask = (question, yes, no) => {
+         return (confirm(question)) ? yes(): no();
+     }
+
+     ask(
+         "Вы согласны?",
+         () => alert("Вы согласились."),
+         () => alert("Вы отменили выполнение.")
+     );*/
+    /*let fruit = prompt("Какой фрукт купить?", "apple");
+    let bag = {};
+
+    // имя свойства будет взято из переменной fruit
+    bag[fruit] = 5;
+    alert( bag.apple )*/
+    /*for (let i = 2; i <= 10 ; i++) {
+        if (!(i % 2 === 0 )) continue;
+                alert( i );
+    }*/
+    /*let i = 0;
+    while (i < 3){
+        alert( `number ${i}!` );
+        i++
+    }*/
+    /*let user = prompt ("Введите число выше 100", "")
+    outer: while (user <= "100" && user !== null) {
+        user++
+        prompt("Введите число выше 100", ""); {
+            if (!user) break outer;
+        }
+    }*/
+    /*let user = {} // Создайте пустой объект user.
+    user.name = "John"   // Добавьте свойство name со значением John.
+    user.surname = "Smith" // Добавьте свойство surname со значением Smith.
+    user.name = "Pete" // Измените значение свойства name на Pete.
+    delete user.name// Удалите свойство name из объекта.*/
+    /*let schedule = {};
+    alert( isEmpty(schedule) ); // true
+    schedule["8:30"] = "get up";
+    alert( isEmpty(schedule) ); // false*/
+    /*function isEmpty(obj) {
+        for (let key in obj) {
+            // если тело цикла начнет выполняться - значит в объекте есть свойства
+            return false;
+        }
+        return true;
+    }
+    let schedule = {};
+    alert( isEmpty(schedule) );
+    schedule["8:30"] = "get up";
+    alert( isEmpty(schedule) );*/
+
 </script>
 </body>
 </html>

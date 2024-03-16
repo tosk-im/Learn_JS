@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<script>
+
+    /*let calculator = {
+            a: +prompt('a?', '0'),
+            b: +prompt('b?', '0'),
+            read: function read() {
+                a += calculator.a
+                b += calculator.b
+            },
+        sum: function sum() {
+                return sum = a + b
+            },
+        mul: function mul() {
+            return mul = a * b
+        }
+
+    };
+    let a = 0
+    let b = 0
+
+    calculator.read();
+    alert( calculator.sum() );
+    alert( calculator.mul() );*/
+    // выше корявый код, ниже правильный
+
+    let calculator = {
+        read: function read() {
+            this.a = +prompt('a?', 0);
+            this.b = +prompt('b?', 0);
+        },
+        sum: function sum() {
+            return this.a + this.b;
+        },
+        mul: function mul() {
+            return this.a * this.b;
+        }
+
+    };
+
+    calculator.read();
+    alert( calculator.sum() );
+    alert( calculator.mul() );
+</script>
+</body>
+</html>
