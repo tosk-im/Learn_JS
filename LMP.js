@@ -1,10 +1,10 @@
 (function () {
     'use strict';
-    console.log('[USM] Начало загрузки файла v1.4.0...');
+    console.log('[USM] Начало загрузки файла v1.5.0...');
 
     var NAME = 'lampa_usm_core';
-    var VERSION = '1.4.0';
-    var STORAGE = 'lampa_usm_config_v4';
+    var VERSION = '1.5.0';
+    var STORAGE = 'lampa_usm_config_v5';
 
     if (window[NAME]) { console.log('[USM] Плагин уже загружен.'); return; }
     window[NAME] = true;
@@ -15,7 +15,8 @@
         min_quality: 0, 
         sources: {}, 
         health: {},
-        iptv_urls: []  // Массив URL плейлистов
+        iptv_urls: [],
+        vod_urls: []  // M3U плейлисты с фильмами
     };
 
     var PRIO_LIST = [10, 50, 100, 150, 200, 300];
@@ -37,7 +38,8 @@
                 min_quality: Number(data.min_quality) || 0,
                 sources: data.sources || {},
                 health: data.health || {},
-                iptv_urls: Array.isArray(data.iptv_urls) ? data.iptv_urls : []
+                iptv_urls: Array.isArray(data.iptv_urls) ? data.iptv_urls : [],
+                vod_urls: Array.isArray(data.vod_urls) ? data.vod_urls : []
             };
         } catch (e) { return copy(DEFAULTS); }
     }
@@ -120,42 +122,48 @@
         var rows = providerRows();
         var html = '<div class="usm-panel"><div class="usm-title">Universal Source Manager</div><div class="usm-subtitle">v' + VERSION + '</div>';
         
-        // === СЕКЦИЯ IPTV ПЛЕЙЛИСТОВ ===
-        html += '<div class="usm-section-title">📺 IPTV Плейлисты</div>';
-        html += rowTpl('add-iptv', '', '➕ Добавить новый плейлист', 'Введите URL M3U плейлиста');
-        html += rowTpl('refresh-iptv', '', '🔄 Обновить кэш плейлистов', 'Скачать заново при изменении');
-        
-        if (state.iptv_urls.length === 0) {
-            html += '<div class="usm-empty-small">Плейлисты не добавлены</div>';
-        } else {
-            state.iptv_urls.forEach(function (url, index) {
-                var shortUrl = url.length > 50 ? url.substring(0, 50) + '...' : url;
-                html += rowTpl('remove-iptv', String(index), '📺 ' + shortUrl, 'Нажмите, чтобы удалить');
-            });
-        }
+        // === IPTV ПЛЕЙЛИСТЫ ===
+        html += '<div class="usm-section-title">📺 IPTV Плейлисты (' + state.iptv_urls.length + ')</div>';
+        html += rowTpl('add-iptv', '', '➕ Добавить IPTV плейлист', 'M3U URL для ТВ каналов');
+        html += rowTpl('refresh-iptv', '', '🔄 Обновить кэш IPTV', 'Скачать заново');
+        state.iptv_urls.forEach(function (url, index) {
+            var shortUrl = url.length > 50 ? url.substring(0, 50) + '...' : url;
+            html += rowTpl('remove-iptv', String(index), '📺 ' + shortUrl, 'Нажмите для удаления');
+        });
         
         html += '<div class="usm-sep"></div>';
         
-        // === СЕКЦИЯ ИСТОЧНИКОВ ===
-        html += '<div class="usm-section-title">🎯 Источники</div>';
+        // === ФИЛЬМЫ И СЕРИАЛЫ (VOD) ===
+        html += '<div class="usm-section-title">🎬 Фильмы и Сериалы (' + state.vod_urls.length + ')</div>';
+        html += rowTpl('add-vod', '', '➕ Добавить источник фильмов', 'M3U с VOD или прямой URL');
+        html += rowTpl('refresh-vod', '', '🔄 Обновить кэш фильмов', 'Скачать заново');
+        state.vod_urls.forEach(function (item, index) {
+            var shortName = item.name || (item.url.length > 40 ? item.url.substring(0, 40) + '...' : item.url);
+            html += rowTpl('remove-vod', String(index), '🎬 ' + shortName, item.type + ' • ' + (item.url.length > 50 ? item.url.substring(0, 50) + '...' : item.url));
+        });
+        
+        html += '<div class="usm-sep"></div>';
+        
+        // === ИСТОЧНИКИ ===
+        html += '<div class="usm-section-title">🎯 Активные источники</div>';
         if (!rows.length) {
             html += '<div class="usm-empty">Источники не подключены.</div>';
         } else {
             rows.forEach(function (row) {
-                html += rowTpl('toggle', row.id, (row.enabled ? '✅ ВКЛ — ' : '⛔ ВЫКЛ — ') + row.status.icon + ' ' + row.title, row.status.text + (row.status.ms ? ' · ' + row.status.ms : ''));
-                html += rowTpl('prio', row.id, '⚙ Приоритет: ' + row.priority + ' — ' + row.title, 'Enter — сменить значение');
-                html += rowTpl('check', row.id, '🔍 Проверить: ' + row.title, 'Замерить время отклика');
+                html += rowTpl('toggle', row.id, (row.enabled ? '✅ ' : '⛔ ') + row.status.icon + ' ' + row.title, row.status.text + (row.status.ms ? ' · ' + row.status.ms : ''));
+                html += rowTpl('prio', row.id, '⚙ Приоритет: ' + row.priority, 'Enter — сменить');
+                html += rowTpl('check', row.id, '🔍 Проверить', 'Замерить отклик');
             });
         }
         html += '<div class="usm-sep"></div>';
         
         // === ОБЩИЕ НАСТРОЙКИ ===
-        html += '<div class="usm-section-title">⚙️ Общие настройки</div>';
-        html += rowTpl('check-all', '', '▶ Проверить все источники', 'Последовательная проверка');
-        html += rowTpl('clear', '', '♻ Сбросить статусы', 'Очистить историю проверок');
-        html += rowTpl('timeout', '', '⏱ Таймаут: ' + state.timeout + ' мс', 'Enter — сменить значение');
-        html += rowTpl('parallel', '', '🔀 Параллельных запросов: ' + state.max_parallel, 'Enter — сменить значение');
-        html += rowTpl('quality', '', '🎯 Мин. качество: ' + (state.min_quality || 0), 'Enter — сменить значение');
+        html += '<div class="usm-section-title">⚙️ Настройки</div>';
+        html += rowTpl('check-all', '', '▶ Проверить все', 'Последовательно');
+        html += rowTpl('clear', '', '♻ Сбросить статусы', 'Очистить историю');
+        html += rowTpl('timeout', '', '⏱ Таймаут: ' + state.timeout + ' мс', 'Enter — сменить');
+        html += rowTpl('parallel', '', '🔀 Параллельных: ' + state.max_parallel, 'Enter — сменить');
+        html += rowTpl('quality', '', '🎯 Мин. качество: ' + (state.min_quality || 0), 'Enter — сменить');
         html += '</div>';
         return html;
     }
@@ -164,58 +172,92 @@
         if (document.getElementById('lampa-usm-style')) return;
         var style = document.createElement('style');
         style.id = 'lampa-usm-style';
-        style.textContent = '.usm-panel{padding:1.5em;color:#fff;font-size:1em}.usm-title{font-size:1.35em;font-weight:600;margin-bottom:.25em}.usm-subtitle{opacity:.6;margin-bottom:1em}.usm-section-title{font-size:1.05em;font-weight:600;opacity:.85;margin:1em 0 .6em 0;text-transform:uppercase;letter-spacing:.04em}.usm-row{display:flex;align-items:center;gap:.7em;padding:.9em .8em;margin-bottom:.4em;border-radius:.6em;background:rgba(255,255,255,.05);cursor:pointer}.usm-row.focus,.usm-row:hover{background:rgba(255,255,255,.16)}.usm-main{flex:1;min-width:0}.usm-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}.usm-meta{font-size:.8em;opacity:.55;margin-top:.25em}.usm-hint{opacity:.35;font-size:.8em}.usm-sep{height:1px;background:rgba(255,255,255,.1);margin:1em 0}.usm-empty{padding:2em 0;opacity:.65}.usm-empty-small{padding:.8em 1em;opacity:.5;font-size:.9em;font-style:italic}';
+        style.textContent = '.usm-panel{padding:1.5em;color:#fff;font-size:1em;max-height:80vh;overflow-y:auto}.usm-title{font-size:1.35em;font-weight:600;margin-bottom:.25em}.usm-subtitle{opacity:.6;margin-bottom:1em}.usm-section-title{font-size:1.05em;font-weight:600;opacity:.85;margin:1em 0 .6em 0;text-transform:uppercase;letter-spacing:.04em}.usm-row{display:flex;align-items:center;gap:.7em;padding:.9em .8em;margin-bottom:.4em;border-radius:.6em;background:rgba(255,255,255,.05);cursor:pointer;transition:background 0.15s}.usm-row.focus,.usm-row:hover{background:rgba(255,255,255,.16)}.usm-main{flex:1;min-width:0}.usm-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}.usm-meta{font-size:.8em;opacity:.55;margin-top:.25em}.usm-hint{opacity:.35;font-size:.8em}.usm-sep{height:1px;background:rgba(255,255,255,.1);margin:1em 0}.usm-empty{padding:2em 0;opacity:.65}.usm-empty-small{padding:.8em 1em;opacity:.5;font-size:.9em;font-style:italic}.usm-modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:9998}';
         document.head.appendChild(style);
     }
 
-    // === ФУНКЦИИ УПРАВЛЕНИЯ ПЛЕЙЛИСТАМИ ===
+    // === УПРАВЛЕНИЕ IPTV ===
     function addIPTVPlaylist() {
-        var url = prompt('Введите URL M3U плейлиста:', 'https://');
+        var url = prompt('Введите URL M3U плейлиста для IPTV:', 'https://');
         if (!url) return;
+        url = url.trim();
+        if (!url || !url.startsWith('http')) {
+            if (Lampa.Noty) Lampa.Noty.show('USM: Некорректный URL');
+            return;
+        }
+        if (state.iptv_urls.indexOf(url) !== -1) {
+            if (Lampa.Noty) Lampa.Noty.show('USM: Этот плейлист уже добавлен');
+            return;
+        }
+        state.iptv_urls.push(url);
+        save();
+        iptvCache = null;
+        if (Lampa.Noty) Lampa.Noty.show('USM: IPTV плейлист добавлен!');
+        refreshSettings();
+    }
+
+    function removeIPTVPlaylist(index) {
+        if (confirm('Удалить этот IPTV плейлист?')) {
+            state.iptv_urls.splice(index, 1);
+            save();
+            iptvCache = null;
+            if (Lampa.Noty) Lampa.Noty.show('USM: Плейлист удалён');
+            refreshSettings();
+        }
+    }
+
+    function refreshIPTVCache() {
+        iptvCache = null;
+        if (state.health['iptv-com-provider']) {
+            delete state.health['iptv-com-provider'];
+            save();
+        }
+        if (Lampa.Noty) Lampa.Noty.show('USM: Кэш IPTV сброшен');
+        refreshSettings();
+    }
+
+    // === УПРАВЛЕНИЕ ФИЛЬМАМИ (VOD) ===
+    function addVODSource() {
+        var name = prompt('Название источника (например: "Мои Фильмы"):', '');
+        if (!name) return;
         
+        var url = prompt('URL M3U плейлиста с фильмами или прямой URL на видео:', 'https://');
+        if (!url) return;
         url = url.trim();
         if (!url || !url.startsWith('http')) {
             if (Lampa.Noty) Lampa.Noty.show('USM: Некорректный URL');
             return;
         }
         
-        // Проверка на дубликаты
-        if (state.iptv_urls.indexOf(url) !== -1) {
-            if (Lampa.Noty) Lampa.Noty.show('USM: Этот плейлист уже добавлен');
-            return;
+        var type = 'm3u';
+        if (url.toLowerCase().endsWith('.mp4') || url.toLowerCase().endsWith('.mkv') || url.toLowerCase().endsWith('.webm')) {
+            type = 'direct';
         }
         
-        state.iptv_urls.push(url);
+        state.vod_urls.push({ name: name, url: url, type: type });
         save();
-        iptvCache = null; // Сбрасываем кэш
-        
-        if (Lampa.Noty) Lampa.Noty.show('USM: Плейлист добавлен!');
+        vodCache = null;
+        if (Lampa.Noty) Lampa.Noty.show('USM: Источник фильмов добавлен!');
         refreshSettings();
     }
 
-    function removeIPTVPlaylist(index) {
-        var url = state.iptv_urls[index];
-        if (!url) return;
-        
-        var confirmMsg = confirm('Удалить плейлист?\n' + url);
-        if (!confirmMsg) return;
-        
-        state.iptv_urls.splice(index, 1);
-        save();
-        iptvCache = null; // Сбрасываем кэш
-        
-        if (Lampa.Noty) Lampa.Noty.show('USM: Плейлист удалён');
-        refreshSettings();
+    function removeVODSource(index) {
+        if (confirm('Удалить этот источник фильмов?')) {
+            state.vod_urls.splice(index, 1);
+            save();
+            vodCache = null;
+            if (Lampa.Noty) Lampa.Noty.show('USM: Источник удалён');
+            refreshSettings();
+        }
     }
 
-    function refreshIPTVCache() {
-        iptvCache = null;
-        if (Lampa.Noty) Lampa.Noty.show('USM: Кэш сброшен. Плейлисты будут обновлены при следующем запросе.');
-        // Сбрасываем статусы IPTV-источников
-        if (state.health['iptv-com-provider']) {
-            delete state.health['iptv-com-provider'];
+    function refreshVODCache() {
+        vodCache = null;
+        if (state.health['vod-provider']) {
+            delete state.health['vod-provider'];
             save();
         }
+        if (Lampa.Noty) Lampa.Noty.show('USM: Кэш фильмов сброшен');
         refreshSettings();
     }
 
@@ -224,13 +266,13 @@
             var act = this.getAttribute('data-act');
             var id = this.getAttribute('data-id');
             
-            if (act === 'add-iptv') {
-                addIPTVPlaylist();
-            } else if (act === 'refresh-iptv') {
-                refreshIPTVCache();
-            } else if (act === 'remove-iptv') {
-                removeIPTVPlaylist(parseInt(id, 10));
-            } else if (act === 'toggle') {
+            if (act === 'add-iptv') addIPTVPlaylist();
+            else if (act === 'refresh-iptv') refreshIPTVCache();
+            else if (act === 'remove-iptv') removeIPTVPlaylist(parseInt(id, 10));
+            else if (act === 'add-vod') addVODSource();
+            else if (act === 'refresh-vod') refreshVODCache();
+            else if (act === 'remove-vod') removeVODSource(parseInt(id, 10));
+            else if (act === 'toggle') {
                 var cfg = state.sources[id] || { enabled: true, priority: 100 };
                 setEnabled(id, cfg.enabled === false);
                 refreshSettings();
@@ -239,37 +281,90 @@
                 c.priority = cycle(PRIO_LIST, c.priority);
                 state.sources[id] = c; save(); refreshSettings();
             } else if (act === 'check') {
-                if (Lampa.Noty) Lampa.Noty.show('USM: проверка ' + id + '...');
+                if (Lampa.Noty) Lampa.Noty.show('USM: проверка...');
                 health(id, function () { refreshSettings(); });
             } else if (act === 'check-all') {
-                if (Lampa.Noty) Lampa.Noty.show('USM: проверка всех источников...');
+                if (Lampa.Noty) Lampa.Noty.show('USM: проверка всех...');
                 checkAll(function () { refreshSettings(); });
-            } else if (act === 'clear') {
-                clearHealth(); refreshSettings();
-            } else if (act === 'timeout') {
-                state.timeout = cycle(TIMEOUT_LIST, state.timeout); save(); refreshSettings();
-            } else if (act === 'parallel') {
-                state.max_parallel = cycle(PARALLEL_LIST, state.max_parallel); save(); refreshSettings();
-            } else if (act === 'quality') {
-                state.min_quality = cycle(QUALITY_LIST, state.min_quality); save(); refreshSettings();
-            }
+            } else if (act === 'clear') { clearHealth(); refreshSettings(); }
+            else if (act === 'timeout') { state.timeout = cycle(TIMEOUT_LIST, state.timeout); save(); refreshSettings(); }
+            else if (act === 'parallel') { state.max_parallel = cycle(PARALLEL_LIST, state.max_parallel); save(); refreshSettings(); }
+            else if (act === 'quality') { state.min_quality = cycle(QUALITY_LIST, state.min_quality); save(); refreshSettings(); }
         });
     }
+
+    var currentModal = null;
 
     function openSettings() {
         injectStyles();
         try {
             var $html = $(settingsHTML());
             bindManagerEvents($html);
-            Lampa.Modal.open({ title: 'Менеджер источников', html: $html, onBack: function () { return true; } });
+            
+            // Создаём overlay для закрытия кликом вне окна
+            var $overlay = $('<div class="usm-modal-overlay"></div>');
+            $overlay.on('click', function() {
+                if (currentModal && Lampa.Modal.close) {
+                    Lampa.Modal.close();
+                    currentModal = null;
+                }
+            });
+            $('body').append($overlay);
+            
+            currentModal = Lampa.Modal.open({ 
+                title: 'Менеджер источников', 
+                html: $html, 
+                onBack: function () { 
+                    $overlay.remove();
+                    currentModal = null;
+                    return true; 
+                },
+                onClose: function() {
+                    $overlay.remove();
+                    currentModal = null;
+                }
+            });
+            
+            // Обработчик Escape для ПК
+            $(document).off('keydown.usm').on('keydown.usm', function(e) {
+                if (e.key === 'Escape' && currentModal) {
+                    if (Lampa.Modal.close) Lampa.Modal.close();
+                    $overlay.remove();
+                    currentModal = null;
+                    $(document).off('keydown.usm');
+                }
+            });
+            
             return;
         } catch (e) { console.error('[USM] Ошибка Modal:', e); }
-        if (Lampa.Noty) Lampa.Noty.show('Менеджер источников: ' + Object.keys(providers).length + ' шт.');
+        if (Lampa.Noty) Lampa.Noty.show('Менеджер: ' + Object.keys(providers).length + ' источников');
     }
 
     function refreshSettings() {
         if (Lampa.Modal && Lampa.Modal.close) Lampa.Modal.close();
         setTimeout(openSettings, 100);
+    }
+
+    // ==========================================
+    // ДОБАВЛЕНИЕ В БОКОВУЮ ПАНЕЛЬ (SIDEBAR)
+    // ==========================================
+    function addToSidebar() {
+        try {
+            if (Lampa.Sidebar && Lampa.Sidebar.add) {
+                Lampa.Sidebar.add('usm-manager', {
+                    name: 'USM Источники',
+                    icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z"/></svg>',
+                    action: openSettings
+                });
+                console.log('[USM] ✅ Добавлено в боковую панель');
+            } else {
+                // Fallback: добавляем через SettingsApi в настройки
+                addSettings();
+            }
+        } catch (e) {
+            console.warn('[USM] Sidebar недоступен, используем SettingsApi:', e);
+            addSettings();
+        }
     }
 
     // ==========================================
@@ -282,11 +377,11 @@
         searchBusy = true;
         setTimeout(function () { searchBusy = false; }, 1000);
         console.log('[USM] Поиск источников для:', movie.title || movie.name);
-        if (Lampa.Noty) Lampa.Noty.show('USM: Поиск источников...');
+        if (Lampa.Noty) Lampa.Noty.show('USM: Поиск...');
 
         LampaUSM.search(movie, function (response) {
             var results = response.results || [];
-            if (!results.length) { if (Lampa.Noty) Lampa.Noty.show('USM: источники не найдены'); return; }
+            if (!results.length) { if (Lampa.Noty) Lampa.Noty.show('USM: ничего не найдено'); return; }
             showResults(movie, results);
         });
     }
@@ -304,7 +399,7 @@
         });
         try {
             Lampa.Modal.open({ title: 'USM Источники', html: $h, onBack: function () { return true; } });
-        } catch (e) { console.error('[USM] Ошибка Modal результатов:', e); }
+        } catch (e) { console.error('[USM] Ошибка Modal:', e); }
     }
 
     function playSource(item, movie) {
@@ -313,7 +408,7 @@
         if (Lampa.Noty) Lampa.Noty.show('USM: запуск ' + item.title);
         Lampa.Player.play({
             url: item.url,
-            title: item.title || (movie.title || movie.name || 'USM Playback'),
+            title: item.title || (movie.title || movie.name || 'USM'),
             timeline: movie
         });
     }
@@ -325,7 +420,7 @@
                 var container = e.object.template.find('.full-start__buttons');
                 if (!container.length || container.find('.usm-custom-btn').length) return;
 
-                var $btn = $('<div class="selector full-start__button usm-custom-btn"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg><span>USM Источники</span></div>');
+                var $btn = $('<div class="selector full-start__button usm-custom-btn"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg><span>USM</span></div>');
                 $btn.css({ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', background: '#e50914', borderRadius: '8px', color: '#fff', fontWeight: 'bold', cursor: 'pointer', marginRight: '10px' });
 
                 var movie = e.object.movie;
@@ -334,13 +429,12 @@
                 $btn.on('hover:enter', triggerSearch);
                 $btn.on('click', triggerSearch);
                 container.prepend($btn);
-                try { if (Lampa.Selector && Lampa.Selector.create) Lampa.Selector.create(); } catch (err) {}
-            } catch (err) { console.error('[USM] Ошибка добавления кнопки:', err); }
+            } catch (err) { console.error('[USM] Ошибка кнопки:', err); }
         });
     }
 
     // ==========================================
-    // УЛУЧШЕННЫЙ ПАРСЕР IPTV (поддержка нескольких URL)
+    // ПАРСЕР IPTV
     // ==========================================
     var iptvCache = null;
     var iptvLoading = false;
@@ -358,15 +452,7 @@
                 current = { logo: logo ? logo[1] : '', group: group ? group[1] : 'Общие', title: name ? name[1].trim() : 'Неизвестный канал' };
             } else if (line.indexOf('http') === 0) {
                 current.url = line;
-                channels.push({ 
-                    id: 'iptv-' + channels.length, 
-                    title: current.title, 
-                    url: current.url, 
-                    quality: 'Live', 
-                    voice: current.group, 
-                    type: 'iptv', 
-                    source: sourceName 
-                });
+                channels.push({ id: 'iptv-' + channels.length, title: current.title, url: current.url, quality: 'Live', voice: current.group, type: 'iptv', source: sourceName });
                 current = {};
             }
         }
@@ -385,11 +471,7 @@
             var check = setInterval(function () { if (!iptvLoading) { clearInterval(check); callback(iptvCache || []); } }, 500);
             return;
         }
-        
-        if (!state.iptv_urls || state.iptv_urls.length === 0) {
-            callback([]);
-            return;
-        }
+        if (!state.iptv_urls || state.iptv_urls.length === 0) { callback([]); return; }
         
         iptvLoading = true;
         var RequestClass = Lampa.Request || Lampa.Reguest;
@@ -398,81 +480,122 @@
         
         function processNextUrl() {
             if (urlIndex >= state.iptv_urls.length) {
-                // Удаляем дубликаты по URL
                 var seen = {};
                 var unique = [];
-                allChannels.forEach(function(ch) {
-                    if (!seen[ch.url]) {
-                        seen[ch.url] = true;
-                        unique.push(ch);
-                    }
-                });
+                allChannels.forEach(function(ch) { if (!seen[ch.url]) { seen[ch.url] = true; unique.push(ch); } });
                 iptvCache = unique;
                 iptvLoading = false;
-                console.log('[USM] ✅ Все IPTV загружены, всего каналов:', unique.length);
+                console.log('[USM] ✅ IPTV загружено, каналов:', unique.length);
                 callback(iptvCache);
                 return;
             }
-            
             var currentUrl = state.iptv_urls[urlIndex++];
             var proxyIndex = 0;
             var sourceName = 'IPTV: ' + currentUrl.substring(0, 40);
             
             function tryNextProxy() {
-                if (proxyIndex >= PROXY_LIST.length) {
-                    console.warn('[USM] ⚠ Не удалось загрузить: ' + currentUrl);
-                    processNextUrl();
-                    return;
-                }
-                
+                if (proxyIndex >= PROXY_LIST.length) { processNextUrl(); return; }
                 var proxyFn = PROXY_LIST[proxyIndex++];
                 var url = proxyFn(currentUrl);
-                
                 var req = new RequestClass();
                 req.silent(url, function (data) {
                     if (data && data.length > 100 && data.indexOf('#EXTINF') !== -1) {
-                        var channels = parseM3U(data, sourceName);
-                        allChannels = allChannels.concat(channels);
-                        console.log('[USM] ✅ Загружен плейлист, каналов:', channels.length);
+                        allChannels = allChannels.concat(parseM3U(data, sourceName));
                         processNextUrl();
-                    } else {
-                        tryNextProxy();
-                    }
-                }, function () {
-                    tryNextProxy();
-                });
+                    } else { tryNextProxy(); }
+                }, function () { tryNextProxy(); });
             }
-            
             tryNextProxy();
         }
-        
         processNextUrl();
     }
 
     // ==========================================
-    // НАСТРОЙКИ И СТАРТ
+    // ПАРСЕР ФИЛЬМОВ (VOD)
+    // ==========================================
+    var vodCache = null;
+    var vodLoading = false;
+
+    function loadVOD(callback) {
+        if (vodCache) { callback(vodCache); return; }
+        if (vodLoading) {
+            var check = setInterval(function () { if (!vodLoading) { clearInterval(check); callback(vodCache || []); } }, 500);
+            return;
+        }
+        if (!state.vod_urls || state.vod_urls.length === 0) { callback([]); return; }
+        
+        vodLoading = true;
+        var RequestClass = Lampa.Request || Lampa.Reguest;
+        var allMovies = [];
+        var urlIndex = 0;
+        
+        function processNext() {
+            if (urlIndex >= state.vod_urls.length) {
+                vodCache = allMovies;
+                vodLoading = false;
+                console.log('[USM] ✅ VOD загружено, фильмов:', allMovies.length);
+                callback(vodCache);
+                return;
+            }
+            var item = state.vod_urls[urlIndex++];
+            
+            if (item.type === 'direct') {
+                // Прямая ссылка на видео
+                allMovies.push({
+                    id: 'vod-' + allMovies.length,
+                    title: item.name,
+                    url: item.url,
+                    quality: '1080p',
+                    type: 'movie',
+                    source: item.name
+                });
+                processNext();
+            } else {
+                // M3U плейлист с фильмами
+                var proxyIndex = 0;
+                function tryNextProxy() {
+                    if (proxyIndex >= PROXY_LIST.length) { processNext(); return; }
+                    var proxyFn = PROXY_LIST[proxyIndex++];
+                    var url = proxyFn(item.url);
+                    var req = new RequestClass();
+                    req.silent(url, function (data) {
+                        if (data && data.length > 100 && data.indexOf('#EXTINF') !== -1) {
+                            var movies = parseM3U(data, item.name).map(function(m) { m.type = 'movie'; return m; });
+                            allMovies = allMovies.concat(movies);
+                            processNext();
+                        } else { tryNextProxy(); }
+                    }, function () { tryNextProxy(); });
+                }
+                tryNextProxy();
+            }
+        }
+        processNext();
+    }
+
+    // ==========================================
+    // НАСТРОЙКИ (FALLBACK)
     // ==========================================
     function addSettings() {
         if (!window.Lampa || !Lampa.SettingsApi) return false;
         if (window[NAME + '_ok']) return true;
         try {
-            Lampa.SettingsApi.addComponent({ component: NAME, name: 'Менеджер источников', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z"/></svg>' });
+            Lampa.SettingsApi.addComponent({ component: NAME, name: 'USM Источники', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z"/></svg>' });
             Lampa.SettingsApi.addParam({
                 component: NAME, param: { name: NAME + '_btn', type: 'button' },
-                field: { name: 'Открыть менеджер источников', description: 'Управление подключёнными источниками и IPTV' },
+                field: { name: 'Открыть менеджер', description: 'Управление IPTV и фильмами' },
                 onRender: function (item) { if (item && typeof item.on === 'function') item.on('hover:enter click', openSettings); },
                 onChange: openSettings
             });
             window[NAME + '_ok'] = true;
-            console.log('[USM] ✅ Настройки зарегистрированы!');
+            console.log('[USM] ✅ SettingsApi зарегистрирован');
             return true;
-        } catch (e) { console.error('[USM] ❌ Ошибка регистрации:', e); return false; }
+        } catch (e) { console.error('[USM] ❌ SettingsApi ошибка:', e); return false; }
     }
 
     function start() {
         console.log('[USM] 🚀 Запуск v' + VERSION + '...');
         setTimeout(function () {
-            if (!addSettings()) console.error('[USM] Не удалось зарегистрировать настройки');
+            addToSidebar();
             addWatchButton();
         }, 500);
     }
@@ -482,7 +605,7 @@
     else setTimeout(start, 2000);
 
     // ==========================================
-    // ИСТОЧНИКИ
+    // РЕГИСТРАЦИЯ ИСТОЧНИКОВ
     // ==========================================
     register({
         id: 'iptv-com-provider',
@@ -497,11 +620,23 @@
                 done(null, results.slice(0, 20));
             });
         },
-        health: function (done) { 
-            loadIPTV(function (channels) { 
-                done(null, !!(channels && channels.length)); 
-            }); 
-        }
+        health: function (done) { loadIPTV(function (channels) { done(null, !!(channels && channels.length)); }); }
+    });
+
+    register({
+        id: 'vod-provider',
+        title: '🎬 Фильмы и Сериалы',
+        search: function (movie, done) {
+            loadVOD(function (movies) {
+                if (!movies || !movies.length) { done(null, []); return; }
+                var query = (movie.title || movie.name || '').toLowerCase();
+                var results = movies.filter(function (m) {
+                    return m.title.toLowerCase().indexOf(query) !== -1 || query.indexOf(m.title.toLowerCase()) !== -1;
+                });
+                done(null, results.slice(0, 20));
+            });
+        },
+        health: function (done) { loadVOD(function (movies) { done(null, !!(movies && movies.length)); }); }
     });
 
     register({
@@ -509,13 +644,13 @@
         title: '🎬 Демо Фильмы',
         search: function (movie, done) {
             setTimeout(function () {
-                done(null, [{ id: 'mov-1', title: (movie.title || 'Фильм') + ' [1080p] (Демо)', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', quality: '1080p', voice: 'Дублированный', type: 'movie', source: 'Демо Источник' }]);
+                done(null, [{ id: 'mov-1', title: (movie.title || 'Фильм') + ' [1080p] (Демо)', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', quality: '1080p', voice: 'Дублированный', type: 'movie', source: 'Демо' }]);
             }, 200);
         },
         health: function (done) { done(null, true); }
     });
 
-    console.log('[USM] ✅ Файл v' + VERSION + ' загружен до конца!');
+    console.log('[USM] ✅ Файл v' + VERSION + ' загружен!');
 
     window.LampaUSM = {
         version: VERSION,
