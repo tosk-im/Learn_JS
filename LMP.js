@@ -2,7 +2,7 @@
     'use strict';
 
     var NAME = 'lampa_usm_core';
-    var VERSION = '1.2.2'; // Исправленная версия
+    var VERSION = '1.2.3'; // Исправлена ошибка Modal в CUB
     var STORAGE = 'lampa_usm_config_v3';
 
     if (window[NAME]) {
@@ -275,13 +275,31 @@
         if (quality) quality.addEventListener('change', function () { state.min_quality = Math.max(0, Math.min(2160, parseInt(quality.value, 10) || 0)); save(); });
     }
 
+    // === ИСПРАВЛЕННАЯ ФУНКЦИЯ ОТКРЫТИЯ НАСТРОЕК ===
     function openSettings() {
         injectStyles();
-        if (Lampa.Modal && Lampa.Modal.open) {
-            Lampa.Modal.open({ title: 'Менеджер источников', html: settingsHTML(), onBack: function () { return true; } });
-            setTimeout(bindSettingsEvents, 100);
-        } else if (Lampa.Noty) {
-            Lampa.Noty.show('Менеджер источников: ' + Object.keys(providers).length + ' шт.');
+        try {
+            if (Lampa.Modal && Lampa.Modal.open) {
+                // КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: оборачиваем строку в jQuery-объект, чтобы избежать ошибки "where.find is not a function"
+                var htmlContent = (typeof $ === 'function') ? $(settingsHTML()) : settingsHTML();
+                
+                Lampa.Modal.open({
+                    title: 'Менеджер источников',
+                    html: htmlContent,
+                    onBack: function () { return true; }
+                });
+                
+                // Даем время на рендер DOM перед привязкой событий
+                setTimeout(bindSettingsEvents, 150);
+                return;
+            }
+        } catch (e) {
+            console.error('[USM] Ошибка открытия Modal:', e);
+        }
+        
+        // Фоллбэк, если Modal всё же не сработал
+        if (Lampa.Noty) {
+            Lampa.Noty.show('Менеджер источников: ' + Object.keys(providers).length + ' шт. (Modal недоступен)');
         } else {
             alert('Менеджер источников: ' + Object.keys(providers).length + ' шт.');
         }
@@ -292,7 +310,6 @@
         setTimeout(openSettings, 100);
     }
 
-    // === ИСПРАВЛЕННАЯ ФУНКЦИЯ РЕГИСТРАЦИИ ===
     function addSettings() {
         if (!window.Lampa || !Lampa.SettingsApi) {
             console.warn('[USM] Lampa или SettingsApi ещё не загружены. Ждём...');
@@ -308,7 +325,6 @@
                 icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z" fill="currentColor"/></svg>'
             });
 
-            // Возвращаем оригинальную структуру с param и field, которую ожидает Lampa
             Lampa.SettingsApi.addParam({
                 component: NAME,
                 param: {
