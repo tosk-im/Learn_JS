@@ -1,6 +1,6 @@
 /*
  * Lampa Universal Source Manager
- * v1.0.0
+ * v1.2.0
  *
  * Provider-manager core for Lampa 3.x.
  *
@@ -27,7 +27,7 @@
     'use strict';
 
     var NAME = 'lampa_universal_source_manager';
-    var VERSION = '1.1.0';
+    var VERSION = '1.2.0';
     var STORAGE = 'lampa_usm_config_v3';
 
     if (window[NAME]) return;
@@ -767,25 +767,27 @@
     };
 
     /*
-     * Settings integration based on Lampa SettingsApi.
-     * The section contains a dedicated action that opens the manager panel.
+     * Settings integration. Register a visible SettingsApi section and bind
+     * the button through onRender, which is how Lampa's settings UI handles
+     * custom button actions in common builds.
      */
     function addSettings() {
-        if (!Lampa.SettingsApi || typeof Lampa.SettingsApi.addComponent !== 'function') {
-            if (Lampa.Noty) Lampa.Noty.show('USM: SettingsApi недоступен в этой версии Lampa');
-            return;
+        if (!window.Lampa || !Lampa.SettingsApi ||
+            typeof Lampa.SettingsApi.addComponent !== 'function' ||
+            typeof Lampa.SettingsApi.addParam !== 'function') {
+            if (window.console) console.warn('[USM] SettingsApi unavailable');
+            return false;
         }
-        if (window[NAME + '_settings']) return;
 
-        window[NAME + '_settings'] = true;
+        if (window[NAME + '_settings']) return true;
 
-        Lampa.SettingsApi.addComponent({
-            component: NAME,
-            name: 'Менеджер источников',
-            icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z"/></svg>'
-        });
+        try {
+            Lampa.SettingsApi.addComponent({
+                component: NAME,
+                name: 'Менеджер источников',
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z"/></svg>'
+            });
 
-        if (typeof Lampa.SettingsApi.addParam === 'function') {
             Lampa.SettingsApi.addParam({
                 component: NAME,
                 param: {
@@ -793,12 +795,29 @@
                     type: 'button'
                 },
                 field: {
-                    name: '<div class="settings-folder" style="padding:0!important"><div style="font-size:1.1em">Открыть менеджер источников</div><div style="opacity:.6;font-size:.85em">Настройка источников, приоритетов и проверка доступности</div></div>'
+                    name: 'Открыть менеджер источников',
+                    description: 'Управление подключёнными источниками и приоритетами'
+                },
+                onRender: function (item) {
+                    if (item && typeof item.on === 'function') {
+                        item.on('hover:enter click', function () {
+                            openSettings();
+                        });
+                    } else if (item && typeof item.addEventListener === 'function') {
+                        item.addEventListener('click', openSettings);
+                    }
                 },
                 onChange: function () {
                     openSettings();
                 }
             });
+
+            window[NAME + '_settings'] = true;
+            if (window.console) console.log('[USM] Settings section registered');
+            return true;
+        } catch (e) {
+            if (window.console) console.error('[USM] Settings registration failed', e);
+            return false;
         }
     }
 
@@ -807,7 +826,13 @@
     function start() {
         if (started) return;
         started = true;
-        addSettings();
+        if (!addSettings()) {
+            var attempts = 0;
+            var retry = setInterval(function () {
+                attempts++;
+                if (addSettings() || attempts >= 20) clearInterval(retry);
+            }, 500);
+        }
 
         if (window.console) {
             console.log(
