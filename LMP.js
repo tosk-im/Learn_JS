@@ -1,12 +1,8 @@
-/*
- * Lampa Universal Source Manager (Fixed & Enhanced)
- * v1.2.1
- */
 (function () {
     'use strict';
 
     var NAME = 'lampa_usm_core';
-    var VERSION = '1.2.1';
+    var VERSION = '1.2.2'; // Исправленная версия
     var STORAGE = 'lampa_usm_config_v3';
 
     if (window[NAME]) {
@@ -15,17 +11,9 @@
     }
     window[NAME] = true;
 
-    var DEFAULTS = {
-        timeout: 5000,
-        max_parallel: 4,
-        min_quality: 0,
-        sources: {},
-        health: {}
-    };
+    var DEFAULTS = { timeout: 5000, max_parallel: 4, min_quality: 0, sources: {}, health: {} };
 
-    function copy(o) {
-        return JSON.parse(JSON.stringify(o));
-    }
+    function copy(o) { return JSON.parse(JSON.stringify(o)); }
 
     function load() {
         try {
@@ -46,11 +34,7 @@
     }
 
     var state = load();
-
-    function save() {
-        Lampa.Storage.set(STORAGE, state);
-    }
-
+    function save() { Lampa.Storage.set(STORAGE, state); }
     var providers = {};
 
     function register(provider) {
@@ -67,48 +51,7 @@
         return provider.id;
     }
 
-    function unregister(id) {
-        delete providers[id];
-        delete state.sources[id];
-        save();
-    }
-
-    // --- ИСПРАВЛЕНИЕ: Поддержка и Reguest, и Request ---
-    function request(url, success, fail) {
-        var RequestClass = Lampa.Request || Lampa.Reguest;
-        if (!RequestClass) {
-            if (fail) fail(new Error('Lampa.Request/Reguest не найден в этой версии'));
-            return;
-        }
-
-        var req = new RequestClass();
-        var finished = false;
-        var timer = setTimeout(function () {
-            if (finished) return;
-            finished = true;
-            if (fail) fail(new Error('timeout'));
-        }, state.timeout);
-
-        req.silent(
-            url,
-            function (data) {
-                if (finished) return;
-                finished = true;
-                clearTimeout(timer);
-                if (success) success(data);
-            },
-            function (error) {
-                if (finished) return;
-                finished = true;
-                clearTimeout(timer);
-                if (fail) fail(error);
-            }
-        );
-    }
-
-    // ... (функции quality, normalize, fingerprint, dedupe, rank, run, search, health остаются без изменений, они были хороши) ...
-    // Для экономии места я их опустил, но вставьте их из оригинального кода сюда.
-    // Если нужно, я могу прислать полный файл целиком, но ключевые изменения ниже:
+    function unregister(id) { delete providers[id]; delete state.sources[id]; save(); }
 
     function quality(value) {
         if (!value) return 0;
@@ -123,24 +66,15 @@
         if (!item || !item.url) return null;
         var q = item.quality || item.resolution || '';
         return {
-            id: String(item.id || item.url),
-            title: item.title || '',
-            url: item.url,
-            type: item.type || 'auto',
-            quality: q,
-            quality_value: quality(q),
-            voice: item.voice || item.translation || '',
-            subtitles: !!item.subtitles,
-            source: item.source || provider.title,
-            source_id: provider.id,
-            size: item.size || 0,
-            language: item.language || 'ru',
-            metadata: item.metadata || {}
+            id: String(item.id || item.url), title: item.title || '', url: item.url, type: item.type || 'auto',
+            quality: q, quality_value: quality(q), voice: item.voice || item.translation || '',
+            subtitles: !!item.subtitles, source: item.source || provider.title, source_id: provider.id,
+            size: item.size || 0, language: item.language || 'ru', metadata: item.metadata || {}
         };
     }
 
     function fingerprint(item) {
-        return [item.title.toLowerCase().trim(), item.quality_value, (item.voice || '').toLowerCase().trim(), item.type, item.url].join('|');
+        return [String(item.title).toLowerCase().trim(), item.quality_value, String(item.voice || '').toLowerCase().trim(), item.type, item.url].join('|');
     }
 
     function dedupe(items) {
@@ -153,11 +87,23 @@
     }
 
     function rank(a, b) {
-        var pa = state.sources[a.source_id] || {};
-        var pb = state.sources[b.source_id] || {};
+        var pa = state.sources[a.source_id] || {}, pb = state.sources[b.source_id] || {};
         if ((pb.priority || 0) !== (pa.priority || 0)) return (pb.priority || 0) - (pa.priority || 0);
         if (b.quality_value !== a.quality_value) return b.quality_value - a.quality_value;
         return String(a.source).localeCompare(String(b.source));
+    }
+
+    function request(url, success, fail) {
+        var RequestClass = Lampa.Request || Lampa.Reguest;
+        if (!RequestClass) { if (fail) fail(new Error('Lampa.Request/Reguest не найден')); return; }
+        var req = new RequestClass();
+        var finished = false;
+        var timer = setTimeout(function () { if (finished) return; finished = true; if (fail) fail(new Error('timeout')); }, state.timeout);
+        req.silent(url, function (data) {
+            if (finished) return; finished = true; clearTimeout(timer); if (success) success(data);
+        }, function (error) {
+            if (finished) return; finished = true; clearTimeout(timer); if (fail) fail(error);
+        });
     }
 
     function run(tasks, limit, complete) {
@@ -181,30 +127,18 @@
 
     function search(movie, callback) {
         var list = Object.keys(providers).map(function (id) { return providers[id]; })
-            .filter(function (provider) {
-                var cfg = state.sources[provider.id] || {};
-                return cfg.enabled !== false && provider.enabled !== false;
-            })
-            .sort(function (a, b) {
-                var pa = state.sources[a.id] || {}, pb = state.sources[b.id] || {};
-                return (pb.priority || 0) - (pa.priority || 0);
-            });
+            .filter(function (provider) { var cfg = state.sources[provider.id] || {}; return cfg.enabled !== false && provider.enabled !== false; })
+            .sort(function (a, b) { var pa = state.sources[a.id] || {}, pb = state.sources[b.id] || {}; return (pb.priority || 0) - (pa.priority || 0); });
 
         var tasks = list.map(function (provider) {
             return function (done) {
                 var started = Date.now(), completed = false;
                 function finish(error, items) {
-                    if (completed) return;
-                    completed = true;
+                    if (completed) return; completed = true;
                     var normalized = (items || []).map(function (item) { return normalize(item, provider); })
                         .filter(Boolean).filter(function (item) { return item.quality_value >= state.min_quality; });
-                    
-                    state.health[provider.id] = {
-                        last_check: Date.now(), online: !error,
-                        response_ms: Date.now() - started, error: error ? String(error.message || error) : ''
-                    };
-                    save();
-                    done(error, normalized);
+                    state.health[provider.id] = { last_check: Date.now(), online: !error, response_ms: Date.now() - started, error: error ? String(error.message || error) : '' };
+                    save(); done(error, normalized);
                 }
                 try { provider.search(movie, finish); } catch (error) { finish(error, []); }
             };
@@ -245,33 +179,144 @@
 
     function clearHealth() { state.health = {}; save(); }
 
-    // --- УЛУЧШЕННАЯ РЕГИСТРАЦИЯ НАСТРОЕК ---
+    function adapterJson(definition) {
+        if (!definition || !definition.endpoint) {
+            return { id: definition?.id || 'unknown', title: definition?.title || 'Unknown', search: function (m, done) { done(new Error('Endpoint не указан'), []); } };
+        }
+        return {
+            id: definition.id, title: definition.title, enabled: definition.enabled !== false,
+            search: function (movie, done) {
+                var title = movie.title || movie.name || '';
+                var date = movie.release_date || movie.first_air_date || '';
+                var year = String(date).slice(0, 4);
+                var url = definition.endpoint + '?q=' + encodeURIComponent(title) + '&year=' + encodeURIComponent(year) + '&tmdb=' + encodeURIComponent(movie.id || '');
+                request(url, function (data) { done(null, data && Array.isArray(data.results) ? data.results : []); }, function (error) { done(error, []); });
+            }
+        };
+    }
+
+    function statusFor(id) {
+        var h = state.health[id];
+        if (!h) return { icon: '⚪', text: 'не проверен', ms: '' };
+        if (h.online === false) return { icon: '🔴', text: 'недоступен', ms: h.response_ms ? h.response_ms + ' ms' : '' };
+        if (h.online === true) return { icon: '🟢', text: 'доступен', ms: h.response_ms ? h.response_ms + ' ms' : '' };
+        return { icon: '⚪', text: 'не проверен', ms: '' };
+    }
+
+    function providerRows() {
+        return Object.keys(providers).map(function (id) {
+            var p = providers[id];
+            var cfg = state.sources[id] || { enabled: true, priority: 100 };
+            var status = statusFor(id);
+            return { id: id, title: p.title || id, enabled: cfg.enabled !== false, priority: Number(cfg.priority || 0), status: status };
+        }).sort(function (a, b) { return (b.priority || 0) - (a.priority || 0) || String(a.title).localeCompare(String(b.title)); });
+    }
+
+    function escapeHtml(text) {
+        return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function settingsHTML() {
+        var rows = providerRows();
+        var html = '<div class="usm-panel"><div class="usm-title">Universal Source Manager</div><div class="usm-subtitle">v' + VERSION + ' • Источники и состояние</div>';
+        if (!rows.length) html += '<div class="usm-empty">Источники ещё не подключены.<br><small>Добавьте их через LampaUSM.register()</small></div>';
+        rows.forEach(function (row) {
+            html += '<div class="usm-row" data-usm-id="' + escapeHtml(row.id) + '">';
+            html += '<div class="usm-main"><div class="usm-name">' + escapeHtml(row.status.icon + ' ' + row.title) + '</div>';
+            html += '<div class="usm-meta">' + escapeHtml(row.status.text) + (row.status.ms ? ' · ' + escapeHtml(row.status.ms) : '') + '</div></div>';
+            html += '<label class="usm-toggle"><input type="checkbox" data-usm-toggle="' + escapeHtml(row.id) + '"' + (row.enabled ? ' checked' : '') + '><span></span></label>';
+            html += '<input class="usm-priority" type="number" min="0" max="999" data-usm-priority="' + escapeHtml(row.id) + '" value="' + row.priority + '">';
+            html += '<button class="usm-test" data-usm-test="' + escapeHtml(row.id) + '">Проверить</button></div>';
+        });
+        html += '<div class="usm-actions"><button class="usm-test-all">Проверить все</button><button class="usm-clear-health">Сбросить статусы</button></div>';
+        html += '<div class="usm-global">';
+        html += '<label>Таймаут, мс <input id="usm-timeout" type="number" min="500" max="30000" value="' + state.timeout + '"></label>';
+        html += '<label>Параллельных запросов <input id="usm-parallel" type="number" min="1" max="12" value="' + state.max_parallel + '"></label>';
+        html += '<label>Мин. качество <input id="usm-quality" type="number" min="0" max="2160" value="' + state.min_quality + '"></label></div></div>';
+        return html;
+    }
+
+    function injectStyles() {
+        if (document.getElementById('lampa-usm-style')) return;
+        var style = document.createElement('style');
+        style.id = 'lampa-usm-style';
+        style.textContent = '.usm-panel{padding:1.5em;color:#fff;font-size:1em}.usm-title{font-size:1.35em;font-weight:600;margin-bottom:.25em}.usm-subtitle{opacity:.6;margin-bottom:1em}.usm-row{display:flex;align-items:center;gap:.7em;padding:.8em 0;border-bottom:1px solid rgba(255,255,255,.08)}.usm-main{flex:1;min-width:0}.usm-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.usm-meta{font-size:.8em;opacity:.55;margin-top:.25em}.usm-toggle input{width:1.2em;height:1.2em}.usm-priority{width:4.5em;background:rgba(255,255,255,.08);color:#fff;border:0;padding:.5em;border-radius:.35em}.usm-test,.usm-actions button{background:rgba(255,255,255,.1);color:#fff;border:0;border-radius:.4em;padding:.55em .8em}.usm-test:active,.usm-actions button:active{transform:scale(.97)}.usm-actions{display:flex;gap:.6em;margin-top:1em}.usm-global{display:flex;flex-direction:column;gap:.7em;margin-top:1.2em;padding-top:1em;border-top:1px solid rgba(255,255,255,.08)}.usm-global label{display:flex;justify-content:space-between;gap:1em}.usm-global input{width:7em;background:rgba(255,255,255,.08);color:#fff;border:0;border-radius:.35em;padding:.5em}.usm-empty{padding:2em 0;opacity:.65}';
+        document.head.appendChild(style);
+    }
+
+    function bindSettingsEvents() {
+        var root = document.querySelector('.usm-panel');
+        if (!root) return;
+        root.querySelectorAll('[data-usm-toggle]').forEach(function (el) { el.addEventListener('change', function () { setEnabled(el.getAttribute('data-usm-toggle'), el.checked); }); });
+        root.querySelectorAll('[data-usm-priority]').forEach(function (el) { el.addEventListener('change', function () { setPriority(el.getAttribute('data-usm-priority'), parseInt(el.value, 10) || 0); }); });
+        root.querySelectorAll('[data-usm-test]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                var id = el.getAttribute('data-usm-test');
+                el.disabled = true; el.textContent = '...';
+                health(id, function () { el.disabled = false; el.textContent = 'Проверить'; refreshSettings(); });
+            });
+        });
+        var all = root.querySelector('.usm-test-all');
+        if (all) {
+            all.addEventListener('click', function () {
+                var ids = Object.keys(providers), index = 0;
+                all.disabled = true; all.textContent = 'Проверка...';
+                function next() { if (index >= ids.length) { all.disabled = false; all.textContent = 'Проверить все'; refreshSettings(); return; } health(ids[index++], next); }
+                next();
+            });
+        }
+        var clear = root.querySelector('.usm-clear-health');
+        if (clear) clear.addEventListener('click', function () { clearHealth(); refreshSettings(); });
+        var timeout = root.querySelector('#usm-timeout');
+        if (timeout) timeout.addEventListener('change', function () { state.timeout = Math.max(500, Math.min(30000, parseInt(timeout.value, 10) || 5000)); save(); });
+        var parallel = root.querySelector('#usm-parallel');
+        if (parallel) parallel.addEventListener('change', function () { state.max_parallel = Math.max(1, Math.min(12, parseInt(parallel.value, 10) || 4)); save(); });
+        var quality = root.querySelector('#usm-quality');
+        if (quality) quality.addEventListener('change', function () { state.min_quality = Math.max(0, Math.min(2160, parseInt(quality.value, 10) || 0)); save(); });
+    }
+
+    function openSettings() {
+        injectStyles();
+        if (Lampa.Modal && Lampa.Modal.open) {
+            Lampa.Modal.open({ title: 'Менеджер источников', html: settingsHTML(), onBack: function () { return true; } });
+            setTimeout(bindSettingsEvents, 100);
+        } else if (Lampa.Noty) {
+            Lampa.Noty.show('Менеджер источников: ' + Object.keys(providers).length + ' шт.');
+        } else {
+            alert('Менеджер источников: ' + Object.keys(providers).length + ' шт.');
+        }
+    }
+
+    function refreshSettings() {
+        if (Lampa.Modal && Lampa.Modal.close) Lampa.Modal.close();
+        setTimeout(openSettings, 100);
+    }
+
+    // === ИСПРАВЛЕННАЯ ФУНКЦИЯ РЕГИСТРАЦИИ ===
     function addSettings() {
         if (!window.Lampa || !Lampa.SettingsApi) {
             console.warn('[USM] Lampa или SettingsApi ещё не загружены. Ждём...');
             return false;
         }
-
         if (window[NAME + '_settings_registered']) return true;
-
         try {
             console.log('[USM] Попытка регистрации в настройках...');
             
-            // 1. Создаем компонент (вкладку)
             Lampa.SettingsApi.addComponent({
                 component: NAME,
                 name: 'Менеджер источников',
-                // Более совместимый SVG
                 icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z" fill="currentColor"/></svg>'
             });
 
-            // 2. Добавляем параметр (кнопку)
+            // Возвращаем оригинальную структуру с param и field, которую ожидает Lampa
             Lampa.SettingsApi.addParam({
                 component: NAME,
                 param: {
-                    name: 'usm_open_manager_btn',
-                    type: 'button',
-                    value: 'Открыть менеджер источников', // Явный текст кнопки
+                    name: NAME + '_open_manager',
+                    type: 'button'
+                },
+                field: {
+                    name: 'Открыть менеджер источников',
                     description: 'Управление подключёнными источниками и приоритетами'
                 },
                 onRender: function (item) {
@@ -281,11 +326,14 @@
                             openSettings();
                         });
                     } else if (item && item.addEventListener) {
-                        item.addEventListener('click', function() {
+                        item.addEventListener('click', function () {
                             console.log('[USM] Кнопка нажата (addEventListener), открываем менеджер');
                             openSettings();
                         });
                     }
+                },
+                onChange: function () {
+                    openSettings();
                 }
             });
 
@@ -298,56 +346,39 @@
         }
     }
 
-    // --- ФУНКЦИИ UI (сокращенно для читаемости, они были рабочими) ---
-    function statusFor(id) { /* ... как в оригинале ... */ return { icon: '⚪', text: 'не проверен', ms: '' }; } // Заглушка для краткости, вставьте оригинал
-    function providerRows() { /* ... как в оригинале ... */ return []; } // Заглушка для краткости, вставьте оригинал
-    function escapeHtml(text) { return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-    function settingsHTML() { return '<div class="usm-panel"><div class="usm-title">Universal Source Manager</div><div class="usm-subtitle">v' + VERSION + '</div><div class="usm-empty">Источники не подключены.</div></div>'; } // Упрощено для теста
-    function injectStyles() { /* ... как в оригинале ... */ }
-    
-    function openSettings() {
-        injectStyles();
-        if (Lampa.Modal && Lampa.Modal.open) {
-            Lampa.Modal.open({
-                title: 'Менеджер источников',
-                html: settingsHTML(),
-                onBack: function () { return true; }
-            });
-        } else if (Lampa.Noty) {
-            Lampa.Noty.show('Менеджер источников: ' + Object.keys(providers).length + ' шт.');
-        } else {
-            alert('Менеджер источников: ' + Object.keys(providers).length + ' шт.');
-        }
-    }
-
     var started = false;
     function start() {
         if (started) return;
         started = true;
-        console.log('[USM] Запуск инициализации...');
-        
+        console.log('[USM] Запуск инициализации v' + VERSION + '...');
         if (!addSettings()) {
             var attempts = 0;
             var retry = setInterval(function () {
                 attempts++;
                 if (addSettings() || attempts >= 20) {
                     clearInterval(retry);
-                    if(attempts >= 20) console.error('[USM] Не удалось зарегистрировать настройки после 20 попыток.');
+                    if (attempts >= 20) console.error('[USM] Не удалось зарегистрировать настройки после 20 попыток.');
                 }
             }, 500);
         }
     }
 
-    // Инициализация
     if (window.appready) {
         start();
     } else if (Lampa.Listener) {
-        Lampa.Listener.follow('app', function (event) {
-            if (event.type === 'ready') start();
-        });
+        Lampa.Listener.follow('app', function (event) { if (event.type === 'ready') start(); });
     } else {
-        // Фоллбэк для очень старых или специфичных сборок
         setTimeout(start, 2000);
     }
 
+    window.LampaUSM = {
+        version: VERSION, state: state, providers: providers,
+        register: register, unregister: unregister, search: search, health: health,
+        setEnabled: setEnabled, setPriority: setPriority, clearHealth: clearHealth,
+        adapterJson: adapterJson, save: save, openSettings: openSettings,
+        list: function () { return providerRows(); },
+        exportConfig: function () { return JSON.stringify(state, null, 2); },
+        reset: function () { state = copy(DEFAULTS); save(); return state; }
+    };
+    console.log('[USM] API доступен через объект window.LampaUSM');
 })();
