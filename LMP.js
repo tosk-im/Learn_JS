@@ -373,4 +373,48 @@
         reset: function () { state = copy(DEFAULTS); save(); return state; }
     };
     console.log('[USM] API доступен через объект window.LampaUSM');
+        // --- РЕГИСТРАЦИЯ ИСТОЧНИКОВ ---
+    
+    // 1. Тестовый IPTV источник
+    LampaUSM.register({
+        id: 'demo-iptv',
+        title: '📺 Демо IPTV (Тестовый поток)',
+        search: function(movie, done) {
+            console.log('[USM] IPTV: Запрос канала для', movie.title);
+            // Имитация поиска. В будущем здесь будет парсинг вашего M3U плейлиста.
+            setTimeout(function() {
+                done(null, [{
+                    id: 'iptv-channel-1',
+                    title: 'Тестовый HLS Канал (Big Buck Bunny)',
+                    url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+                    quality: 'HD',
+                    voice: 'Оригинал',
+                    type: 'iptv'
+                }]);
+            }, 300);
+        },
+        health: function(done) {
+            done(null, true); // Источник всегда онлайн
+        }
+    });
+
+    // 2. Тестовый источник Фильмов
+    LampaUSM.register({
+        id: 'demo-movies',
+        title: '🎬 Демо Фильмы',
+        search: function(movie, done) {
+            console.log('[USM] Фильмы: Поиск для', movie.title);
+            setTimeout(function() {
+                done(null, [{
+                    id: 'movie-1080',
+                    title: (movie.title || 'Фильм') + ' [1080p]',
+                    url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+                    quality: '1080p',
+                    voice: 'Дублированный',
+                    type: 'movie'
+                }]);
+            }, 400);
+        },
+        health: function(done) { done(null, true); }
+    });
 })();
