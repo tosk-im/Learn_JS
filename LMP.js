@@ -2,7 +2,7 @@
     'use strict';
 
     var NAME = 'lampa_usm_core';
-    var VERSION = '1.2.3'; // Исправлена ошибка Modal в CUB
+    var VERSION = '1.2.3';
     var STORAGE = 'lampa_usm_config_v3';
 
     if (window[NAME]) {
@@ -275,31 +275,24 @@
         if (quality) quality.addEventListener('change', function () { state.min_quality = Math.max(0, Math.min(2160, parseInt(quality.value, 10) || 0)); save(); });
     }
 
-    // === ИСПРАВЛЕННАЯ ФУНКЦИЯ ОТКРЫТИЯ НАСТРОЕК ===
     function openSettings() {
         injectStyles();
         try {
             if (Lampa.Modal && Lampa.Modal.open) {
-                // КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: оборачиваем строку в jQuery-объект, чтобы избежать ошибки "where.find is not a function"
                 var htmlContent = (typeof $ === 'function') ? $(settingsHTML()) : settingsHTML();
-                
                 Lampa.Modal.open({
                     title: 'Менеджер источников',
                     html: htmlContent,
                     onBack: function () { return true; }
                 });
-                
-                // Даем время на рендер DOM перед привязкой событий
                 setTimeout(bindSettingsEvents, 150);
                 return;
             }
         } catch (e) {
             console.error('[USM] Ошибка открытия Modal:', e);
         }
-        
-        // Фоллбэк, если Modal всё же не сработал
         if (Lampa.Noty) {
-            Lampa.Noty.show('Менеджер источников: ' + Object.keys(providers).length + ' шт. (Modal недоступен)');
+            Lampa.Noty.show('Менеджер источников: ' + Object.keys(providers).length + ' шт.');
         } else {
             alert('Менеджер источников: ' + Object.keys(providers).length + ' шт.');
         }
@@ -318,41 +311,24 @@
         if (window[NAME + '_settings_registered']) return true;
         try {
             console.log('[USM] Попытка регистрации в настройках...');
-            
             Lampa.SettingsApi.addComponent({
                 component: NAME,
                 name: 'Менеджер источников',
                 icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z" fill="currentColor"/></svg>'
             });
-
             Lampa.SettingsApi.addParam({
                 component: NAME,
-                param: {
-                    name: NAME + '_open_manager',
-                    type: 'button'
-                },
-                field: {
-                    name: 'Открыть менеджер источников',
-                    description: 'Управление подключёнными источниками и приоритетами'
-                },
+                param: { name: NAME + '_open_manager', type: 'button' },
+                field: { name: 'Открыть менеджер источников', description: 'Управление подключёнными источниками и приоритетами' },
                 onRender: function (item) {
                     if (item && typeof item.on === 'function') {
-                        item.on('hover:enter click', function () {
-                            console.log('[USM] Кнопка нажата, открываем менеджер');
-                            openSettings();
-                        });
+                        item.on('hover:enter click', function () { console.log('[USM] Кнопка нажата'); openSettings(); });
                     } else if (item && item.addEventListener) {
-                        item.addEventListener('click', function () {
-                            console.log('[USM] Кнопка нажата (addEventListener), открываем менеджер');
-                            openSettings();
-                        });
+                        item.addEventListener('click', function () { console.log('[USM] Кнопка нажата (addEventListener)'); openSettings(); });
                     }
                 },
-                onChange: function () {
-                    openSettings();
-                }
+                onChange: function () { openSettings(); }
             });
-
             window[NAME + '_settings_registered'] = true;
             console.log('[USM] ✅ Настройки успешно зарегистрированы!');
             return true;
