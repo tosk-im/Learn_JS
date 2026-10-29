@@ -253,4 +253,153 @@
             el.addEventListener('click', function () {
                 var id = el.getAttribute('data-usm-test');
                 el.disabled = true; el.textContent = '...';
-                health(id, function () { el.disabled = false; el.textContent = 'Проверить
+                health(id, function () { el.disabled = false; el.textContent = 'Проверить'; refreshSettings(); });
+            });
+        });
+        var all = root.querySelector('.usm-test-all');
+        if (all) {
+            all.addEventListener('click', function () {
+                var ids = Object.keys(providers), index = 0;
+                all.disabled = true; all.textContent = 'Проверка...';
+                function next() { if (index >= ids.length) { all.disabled = false; all.textContent = 'Проверить все'; refreshSettings(); return; } health(ids[index++], next); }
+                next();
+            });
+        }
+        var clear = root.querySelector('.usm-clear-health');
+        if (clear) clear.addEventListener('click', function () { clearHealth(); refreshSettings(); });
+        var timeout = root.querySelector('#usm-timeout');
+        if (timeout) timeout.addEventListener('change', function () { state.timeout = Math.max(500, Math.min(30000, parseInt(timeout.value, 10) || 5000)); save(); });
+        var parallel = root.querySelector('#usm-parallel');
+        if (parallel) parallel.addEventListener('change', function () { state.max_parallel = Math.max(1, Math.min(12, parseInt(parallel.value, 10) || 4)); save(); });
+        var quality = root.querySelector('#usm-quality');
+        if (quality) quality.addEventListener('change', function () { state.min_quality = Math.max(0, Math.min(2160, parseInt(quality.value, 10) || 0)); save(); });
+    }
+
+    function openSettings() {
+        injectStyles();
+        try {
+            if (Lampa.Modal && Lampa.Modal.open) {
+                var htmlContent = (typeof $ === 'function') ? $(settingsHTML()) : settingsHTML();
+                Lampa.Modal.open({ title: 'Менеджер источников', html: htmlContent, onBack: function () { return true; } });
+                setTimeout(bindSettingsEvents, 150);
+                return;
+            }
+        } catch (e) { console.error('[USM] Ошибка открытия Modal:', e); }
+        if (Lampa.Noty) Lampa.Noty.show('Менеджер источников: ' + Object.keys(providers).length + ' шт.');
+    }
+
+    function refreshSettings() {
+        if (Lampa.Modal && Lampa.Modal.close) Lampa.Modal.close();
+        setTimeout(openSettings, 100);
+    }
+
+    function addSettings() {
+        if (!window.Lampa || !Lampa.SettingsApi) {
+            console.warn('[USM] Lampa или SettingsApi ещё не загружены. Ждём...');
+            return false;
+        }
+        if (window[NAME + '_settings_registered']) return true;
+        try {
+            console.log('[USM] Попытка регистрации в настройках...');
+            Lampa.SettingsApi.addComponent({
+                component: NAME,
+                name: 'Менеджер источников',
+                icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z" fill="currentColor"/></svg>'
+            });
+            Lampa.SettingsApi.addParam({
+                component: NAME,
+                param: { name: NAME + '_open_manager', type: 'button' },
+                field: { name: 'Открыть менеджер источников', description: 'Управление подключёнными источниками и приоритетами' },
+                onRender: function (item) {
+                    if (item && typeof item.on === 'function') {
+                        item.on('hover:enter click', function () { console.log('[USM] Кнопка нажата'); openSettings(); });
+                    } else if (item && item.addEventListener) {
+                        item.addEventListener('click', function () { console.log('[USM] Клик'); openSettings(); });
+                    }
+                },
+                onChange: function () { openSettings(); }
+            });
+            window[NAME + '_settings_registered'] = true;
+            console.log('[USM] ✅ Настройки успешно зарегистрированы!');
+            return true;
+        } catch (e) { console.error('[USM] ❌ Ошибка регистрации настроек:', e); return false; }
+    }
+
+    var started = false;
+    function start() {
+        if (started) return;
+        started = true;
+        console.log('[USM] Запуск инициализации v' + VERSION + '...');
+        if (!addSettings()) {
+            var attempts = 0;
+            var retry = setInterval(function () {
+                attempts++;
+                if (addSettings() || attempts >= 20) {
+                    clearInterval(retry);
+                    if (attempts >= 20) console.error('[USM] Не удалось зарегистрировать настройки после 20 попыток.');
+                }
+            }, 500);
+        }
+    }
+
+    if (window.appready) {
+        start();
+    } else if (Lampa.Listener) {
+        Lampa.Listener.follow('app', function (event) { if (event.type === 'ready') start(); });
+    } else {
+        setTimeout(start, 2000);
+    }
+
+    // ============================================
+    // РЕГИСТРАЦИЯ ТЕСТОВЫХ ИСТОЧНИКОВ
+    // ============================================
+
+    LampaUSM.register({
+        id: 'demo-iptv',
+        title: '📺 Демо IPTV (Тестовый поток)',
+        search: function(movie, done) {
+            console.log('[USM] IPTV: Запрос канала для', movie.title);
+            setTimeout(function() {
+                done(null, [{
+                    id: 'iptv-channel-1',
+                    title: 'Тестовый HLS Канал (Big Buck Bunny)',
+                    url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+                    quality: 'HD',
+                    voice: 'Оригинал',
+                    type: 'iptv'
+                }]);
+            }, 300);
+        },
+        health: function(done) { done(null, true); }
+    });
+
+    LampaUSM.register({
+        id: 'demo-movies',
+        title: '🎬 Демо Фильмы',
+        search: function(movie, done) {
+            console.log('[USM] Фильмы: Поиск для', movie.title);
+            setTimeout(function() {
+                done(null, [{
+                    id: 'movie-1080',
+                    title: (movie.title || 'Фильм') + ' [1080p]',
+                    url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+                    quality: '1080p',
+                    voice: 'Дублированный',
+                    type: 'movie'
+                }]);
+            }, 400);
+        },
+        health: function(done) { done(null, true); }
+    });
+
+    window.LampaUSM = {
+        version: VERSION, state: state, providers: providers,
+        register: register, unregister: unregister, search: search, health: health,
+        setEnabled: setEnabled, setPriority: setPriority, clearHealth: clearHealth,
+        adapterJson: adapterJson, save: save, openSettings: openSettings,
+        list: function () { return providerRows(); },
+        exportConfig: function () { return JSON.stringify(state, null, 2); },
+        reset: function () { state = copy(DEFAULTS); save(); return state; }
+    };
+    console.log('[USM] API доступен через объект window.LampaUSM');
+})();
