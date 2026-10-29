@@ -1,9 +1,9 @@
 (function () {
     'use strict';
-    console.log('[USM] Начало загрузки файла v1.7.0...');
+    console.log('[USM] Начало загрузки файла v1.8.0...');
 
     var NAME = 'lampa_usm_core';
-    var VERSION = '1.7.0';
+    var VERSION = '1.8.0';
     var STORAGE = 'lampa_usm_config_v5';
     var MENU_ICON = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z"/></svg>';
 
@@ -45,10 +45,8 @@
         if (!provider || !provider.id || typeof provider.search !== 'function') return;
         providers[provider.id] = provider;
         if (typeof state.sources[provider.id] === 'undefined') { state.sources[provider.id] = { enabled: true, priority: 100 }; save(); }
-        console.log('[USM] Источник зарегистрирован:', provider.id);
         return provider.id;
     }
-
     function unregister(id) { delete providers[id]; delete state.sources[id]; save(); }
     function setEnabled(id, enabled) {
         if (!state.sources[id]) state.sources[id] = { enabled: !!enabled, priority: 100 };
@@ -119,11 +117,11 @@
 
     function settingsHTML() {
         var rows = providerRows();
-        var html = '<div class="usm-panel"><div class="usm-title">Universal Source Manager</div><div class="usm-subtitle">v' + VERSION + ' • Balancer mode</div>';
+        var html = '<div class="usm-panel"><div class="usm-title">Universal Source Manager</div><div class="usm-subtitle">v' + VERSION + '</div>';
 
         html += '<div class="usm-section-title">📺 IPTV (' + state.iptv_urls.length + ')</div>';
         html += rowTpl('add-iptv', '', '➕ Добавить IPTV плейлист', 'M3U URL для ТВ каналов');
-        html += rowTpl('catalog-iptv', '', '📺 Каталог каналов', 'Просмотр всех каналов');
+        html += rowTpl('catalog-iptv', '', '📺 Каталог каналов', 'Сетка с логотипами и группами');
         html += rowTpl('refresh-iptv', '', '🔄 Обновить кэш IPTV', 'Скачать заново');
         state.iptv_urls.forEach(function (url, index) {
             var s = url.length > 50 ? url.substring(0, 50) + '...' : url;
@@ -133,7 +131,7 @@
         html += '<div class="usm-sep"></div>';
         html += '<div class="usm-section-title">🎬 Фильмы и Сериалы (' + state.vod_urls.length + ')</div>';
         html += rowTpl('add-vod', '', '➕ Добавить источник фильмов', 'M3U с VOD или прямой URL');
-        html += rowTpl('catalog-vod', '', '🎬 Каталог фильмов', 'Просмотр и поиск по VOD');
+        html += rowTpl('catalog-vod', '', '🎬 Каталог фильмов', 'Сетка с обложками');
         html += rowTpl('refresh-vod', '', '🔄 Обновить кэш фильмов', 'Скачать заново');
         state.vod_urls.forEach(function (item, index) {
             var s = (item.name || item.url); if (s.length > 45) s = s.substring(0, 45) + '...';
@@ -175,7 +173,7 @@
         if (document.getElementById('lampa-usm-style')) return;
         var style = document.createElement('style');
         style.id = 'lampa-usm-style';
-        style.textContent = '.usm-panel{padding:1.5em;color:#fff;font-size:1em;max-height:80vh;overflow-y:auto}.usm-title{font-size:1.35em;font-weight:600;margin-bottom:.25em}.usm-subtitle{opacity:.6;margin-bottom:1em}.usm-section-title{font-size:1.05em;font-weight:600;opacity:.85;margin:1em 0 .6em 0;text-transform:uppercase;letter-spacing:.04em}.usm-row{display:flex;align-items:center;gap:.7em;padding:.9em .8em;margin-bottom:.4em;border-radius:.6em;background:rgba(255,255,255,.05);cursor:pointer;transition:background 0.15s}.usm-row.focus,.usm-row:hover{background:rgba(255,255,255,.16)}.usm-main{flex:1;min-width:0}.usm-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}.usm-meta{font-size:.8em;opacity:.55;margin-top:.25em}.usm-hint{opacity:.35;font-size:.8em}.usm-sep{height:1px;background:rgba(255,255,255,.1);margin:1em 0}.usm-empty{padding:2em 0;opacity:.65}.usm-native-head{padding:.6em .8em;margin-top:.8em;font-size:.85em;font-weight:700;letter-spacing:.05em;color:#e50914;text-transform:uppercase}';
+        style.textContent = '.usm-panel{padding:1.5em;color:#fff;font-size:1em;max-height:80vh;overflow-y:auto}.usm-title{font-size:1.35em;font-weight:600;margin-bottom:.25em}.usm-subtitle{opacity:.6;margin-bottom:1em}.usm-section-title{font-size:1.05em;font-weight:600;opacity:.85;margin:1em 0 .6em 0;text-transform:uppercase;letter-spacing:.04em}.usm-row{display:flex;align-items:center;gap:.7em;padding:.9em .8em;margin-bottom:.4em;border-radius:.6em;background:rgba(255,255,255,.05);cursor:pointer;transition:background 0.15s}.usm-row.focus,.usm-row:hover{background:rgba(255,255,255,.16)}.usm-main{flex:1;min-width:0}.usm-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}.usm-meta{font-size:.8em;opacity:.55;margin-top:.25em}.usm-hint{opacity:.35;font-size:.8em}.usm-sep{height:1px;background:rgba(255,255,255,.1);margin:1em 0}.usm-empty{padding:2em 0;opacity:.65}.usm-native-head{padding:.6em .8em;margin-top:.8em;font-size:.85em;font-weight:700;letter-spacing:.05em;color:#e50914;text-transform:uppercase}.usm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding-bottom:1em}.usm-chan{background:rgba(255,255,255,.06);border-radius:10px;padding:10px;cursor:pointer;transition:background .15s}.usm-chan.focus,.usm-chan:hover{background:rgba(255,255,255,.18)}';
         document.head.appendChild(style);
     }
 
@@ -200,14 +198,13 @@
         Lampa.Modal.open({ title: title, html: $html, onBack: function () { closeUsmModal(); return true; } });
     }
 
-    // ============ IPTV / VOD / API управление ============
+    // ============ УПРАВЛЕНИЕ ИСТОЧНИКАМИ ============
     function addIPTVPlaylist() {
         var url = prompt('Введите URL M3U плейлиста для IPTV:', 'https://');
         if (!url) return; url = url.trim();
         if (!url || url.indexOf('http') !== 0) { if (Lampa.Noty) Lampa.Noty.show('USM: Некорректный URL'); return; }
         if (state.iptv_urls.indexOf(url) !== -1) { if (Lampa.Noty) Lampa.Noty.show('USM: уже добавлен'); return; }
         state.iptv_urls.push(url); save(); iptvCache = null;
-        if (Lampa.Noty) Lampa.Noty.show('USM: IPTV плейлист добавлен!');
         refreshSettings();
     }
     function removeIPTVPlaylist(index) {
@@ -216,15 +213,14 @@
     function refreshIPTVCache() { iptvCache = null; delete state.health['iptv-com-provider']; save(); refreshSettings(); }
 
     function addVODSource() {
-        var name = prompt('Название источника (например: "Мои Фильмы"):', '');
+        var name = prompt('Название источника:', '');
         if (!name) return;
-        var url = prompt('URL M3U плейлиста с фильмами или прямой URL на видео:', 'https://');
+        var url = prompt('URL M3U с фильмами или прямой URL видео:', 'https://');
         if (!url) return; url = url.trim();
         if (!url || url.indexOf('http') !== 0) { if (Lampa.Noty) Lampa.Noty.show('USM: Некорректный URL'); return; }
         var type = 'm3u', low = url.toLowerCase();
         if (low.indexOf('.mp4') !== -1 || low.indexOf('.mkv') !== -1 || low.indexOf('.webm') !== -1) type = 'direct';
         state.vod_urls.push({ name: name, url: url, type: type }); save(); vodCache = null;
-        if (Lampa.Noty) Lampa.Noty.show('USM: источник фильмов добавлен!');
         refreshSettings();
     }
     function removeVODSource(index) {
@@ -241,6 +237,7 @@
                 url: f.url || f.file || f.link || f.stream || '',
                 quality: f.quality || f.resolution || '',
                 voice: f.voice || f.translation || f.audio || '',
+                logo: f.logo || f.icon || '',
                 source: srcName,
                 type: f.type || 'movie'
             };
@@ -249,14 +246,14 @@
 
     function registerApiProvider(src) {
         register({
-            id: src.id,
-            title: '🔌 ' + src.name,
+            id: src.id, title: '🔌 ' + src.name,
             search: function (movie, done) {
                 var sep = src.endpoint.indexOf('?') === -1 ? '?' : '&';
                 var q = encodeURIComponent(movie.title || movie.name || '');
                 var year = String(movie.release_date || movie.first_air_date || '').slice(0, 4);
-                var url = src.endpoint + sep + 'q=' + q + '&year=' + encodeURIComponent(year) + '&tmdb=' + encodeURIComponent(movie.id || '');
-                jsonGet(url, function (d) { done(null, mapApiResults(d, src.name)); }, function (e) { done(e, []); });
+                jsonGet(src.endpoint + sep + 'q=' + q + '&year=' + encodeURIComponent(year) + '&tmdb=' + encodeURIComponent(movie.id || ''),
+                    function (d) { done(null, mapApiResults(d, src.name)); },
+                    function (e) { done(e, []); });
             },
             health: function (done) {
                 var sep = src.endpoint.indexOf('?') === -1 ? '?' : '&';
@@ -268,12 +265,11 @@
     function addApiSource() {
         var name = prompt('Название API источника:', '');
         if (!name) return;
-        var endpoint = prompt('URL endpoint (JSON: {results:[{title,url,quality,voice}]}):', 'https://');
+        var endpoint = prompt('URL endpoint (JSON {results:[{title,url,quality,voice}]}):', 'https://');
         if (!endpoint || endpoint.indexOf('http') !== 0) { if (Lampa.Noty) Lampa.Noty.show('USM: Некорректный URL'); return; }
         var src = { id: 'api-' + Date.now(), name: name, endpoint: endpoint };
         state.api_sources.push(src); save();
         registerApiProvider(src);
-        if (Lampa.Noty) Lampa.Noty.show('USM: API источник добавлен!');
         refreshSettings();
     }
     function removeApiSource(index) {
@@ -286,25 +282,58 @@
         }
     }
 
+    // ============ КАТАЛОГ: ГРУППЫ + СЕТКА С ЛОГОТИПАМИ ============
     function openCatalog(kind) {
         var loader = kind === 'iptv' ? loadIPTV : loadVOD;
         if (Lampa.Noty) Lampa.Noty.show('USM: загрузка каталога...');
         loader(function (items) {
             if (!items || !items.length) { if (Lampa.Noty) Lampa.Noty.show('USM: каталог пуст — добавьте плейлисты'); return; }
-            var filter = prompt('Фильтр по названию (пусто = все):', '') || '';
-            var q = filter.toLowerCase().trim();
-            var list = q ? items.filter(function (i) { return i.title.toLowerCase().indexOf(q) !== -1; }) : items;
-            if (!list.length) { if (Lampa.Noty) Lampa.Noty.show('USM: ничего не найдено'); return; }
-            list = list.slice(0, 100);
-            var html = '<div class="usm-panel"><div class="usm-title">' + (kind === 'iptv' ? '📺 Каналы' : '🎬 Фильмы') + ': ' + list.length + '</div>';
-            list.forEach(function (item, idx) {
-                html += rowTpl('play-catalog', String(idx), item.title, (item.voice || '') + (item.source ? ' • ' + item.source : ''));
+            var groups = {};
+            items.forEach(function (i) { var g = i.voice || 'Общие'; groups[g] = (groups[g] || 0) + 1; });
+            var gnames = Object.keys(groups).sort(function (a, b) { return groups[b] - groups[a]; });
+
+            var html = '<div class="usm-panel"><div class="usm-title">' + (kind === 'iptv' ? '📺 Каналы' : '🎬 Фильмы') + ': ' + items.length + '</div>';
+            html += rowTpl('grid-all', '', '📺 Все каналы', items.length + ' шт.');
+            html += rowTpl('grid-search', '', '🔎 Поиск по названию', 'Введите часть имени');
+            gnames.slice(0, 40).forEach(function (g) {
+                html += rowTpl('grid-group', g, '🗂 ' + g, groups[g] + ' шт.');
             });
             html += '</div>';
+
             openUsmModal('Каталог USM', html, function ($h) {
                 $h.find('.selector').on('hover:enter', function () {
-                    playSource(list[parseInt(this.getAttribute('data-id'), 10)], { title: list[0].title });
+                    var act = this.getAttribute('data-act');
+                    var id = this.getAttribute('data-id');
+                    if (act === 'grid-all') openGrid(items, kind);
+                    else if (act === 'grid-search') {
+                        var q = (prompt('Введите название:', '') || '').toLowerCase().trim();
+                        if (!q) return;
+                        var f = items.filter(function (i) { return i.title.toLowerCase().indexOf(q) !== -1; });
+                        if (!f.length) { if (Lampa.Noty) Lampa.Noty.show('USM: не найдено'); return; }
+                        openGrid(f, kind);
+                    } else if (act === 'grid-group') {
+                        openGrid(items.filter(function (i) { return (i.voice || 'Общие') === id; }), kind);
+                    }
                 });
+            });
+        });
+    }
+
+    function openGrid(items, kind) {
+        items = items.slice(0, 300);
+        var html = '<div class="usm-panel"><div class="usm-title">' + (kind === 'iptv' ? '📺' : '🎬') + ' ' + items.length + '</div><div class="usm-grid">';
+        items.forEach(function (item, idx) {
+            var logo = item.logo
+                ? '<img src="' + escapeHtml(item.logo) + '" style="width:100%;height:64px;object-fit:contain;background:#fff;border-radius:8px;padding:6px" onerror="this.style.visibility=\'hidden\'">'
+                : '<div style="height:64px;display:flex;align-items:center;justify-content:center;font-size:26px;opacity:.45">' + (kind === 'iptv' ? '📺' : '🎬') + '</div>';
+            html += '<div class="selector usm-chan" data-idx="' + idx + '">' + logo +
+                '<div style="margin-top:8px;font-size:.85em;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escapeHtml(item.title) + '</div></div>';
+        });
+        html += '</div></div>';
+        openUsmModal('Каталог USM', html, function ($h) {
+            $h.find('.usm-chan').on('hover:enter', function () {
+                var it = items[parseInt(this.getAttribute('data-idx'), 10)];
+                playSource(it, it);
             });
         });
     }
@@ -348,38 +377,26 @@
         setTimeout(openSettings, 100);
     }
 
-    // ============ ПЕРЕХВАТ КНОПКИ «СМОТРЕТЬ» ============
+    // ============ ПЕРЕХВАТ «СМОТРЕТЬ» ============
     function usmIntercept(movie) {
         if (!movie || !state.intercept) return;
-        console.log('[USM] Перехват «Смотреть»:', movie.title || movie.name);
         var seen = {};
         $('.selector').each(function () { seen[this.__usm_id || (this.__usm_id = Math.random())] = true; });
-        var started = Date.now();
-        var injected = false;
-
+        var started = Date.now(), injected = false;
         LampaUSM.search(movie, function (resp) {
             var results = (resp.results || []).slice(0, 10);
-            if (!results.length) { console.log('[USM] Перехват: результатов нет'); return; }
-
+            if (!results.length) return;
             var poll = setInterval(function () {
                 var found = null;
-                $('.selector').each(function () {
-                    if (!found && !seen[this.__usm_id]) found = $(this);
-                });
+                $('.selector').each(function () { if (!found && !seen[this.__usm_id]) found = $(this); });
                 if (found) {
-                    clearInterval(poll);
-                    injected = true;
+                    clearInterval(poll); injected = true;
                     injectIntoNativeList(found.parent(), results, movie);
                 } else if (Date.now() - started > 4000) {
                     clearInterval(poll);
-                    if (!injected) { console.log('[USM] Родное окно не появилось — открываем своё'); showResults(movie, results); }
+                    if (!injected) showResults(movie, results);
                 }
             }, 150);
-
-            // Фоллбэк: если родное окно так и не появилось за 1.5с и результатов мало — своё окно
-            setTimeout(function () {
-                if (!injected && Date.now() - started > 1500) { /* ждём poll до 4с */ }
-            }, 1600);
         });
     }
 
@@ -396,16 +413,12 @@
             $row.on('hover:enter click', function (ev) { ev.stopPropagation(); playSource(item, movie); });
             $container.append($row);
         });
-        console.log('[USM] ✅ Встроено строк в родное окно:', results.length);
     }
 
-    // ============ КАРТОЧКА: кнопка + перехват ============
     function setupCard(e) {
         try {
             var container = e.object.template.find('.full-start__buttons');
             if (!container.length) return;
-
-            // Наша красная кнопка (fallback)
             if (!container.find('.usm-custom-btn').length) {
                 var $btn = $('<div class="selector full-start__button usm-custom-btn"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg><span>USM</span></div>');
                 $btn.css({ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', background: '#e50914', borderRadius: '8px', color: '#fff', fontWeight: 'bold', cursor: 'pointer', marginRight: '10px' });
@@ -413,8 +426,6 @@
                 $btn.on('hover:enter click', function () { openUSMSearch(movie0); });
                 container.prepend($btn);
             }
-
-            // Перехват нативной кнопки «Смотреть»
             if (!container.data('usm-intercept-bound')) {
                 container.data('usm-intercept-bound', true);
                 container.children('.selector').each(function () {
@@ -423,11 +434,10 @@
                         $(this).data('usm-hook', true);
                         var movie = e.object.movie;
                         $(this).on('hover:enter click', function () { usmIntercept(movie); });
-                        console.log('[USM] Перехват привязан к кнопке «Смотреть»');
                     }
                 });
             }
-        } catch (err) { console.error('[USM] Ошибка setupCard:', err); }
+        } catch (err) {}
     }
 
     var searchBusy = false;
@@ -463,7 +473,7 @@
         Lampa.Player.play({ url: item.url, title: item.title || (movie.title || movie.name || 'USM'), timeline: movie });
     }
 
-    // ============ ЗАГРУЗЧИКИ M3U ============
+    // ============ ЗАГРУЗЧИКИ M3U (с логотипами) ============
     var iptvCache = null, iptvLoading = false, vodCache = null, vodLoading = false;
 
     function parseM3U(content, sourceName) {
@@ -471,12 +481,13 @@
         for (var i = 0; i < lines.length; i++) {
             var line = lines[i].trim();
             if (line.indexOf('#EXTINF:') === 0) {
+                var logo = line.match(/tvg-logo="([^"]*)"/);
                 var group = line.match(/group-title="([^"]*)"/);
                 var name = line.match(/,(.*)$/);
-                current = { group: group ? group[1] : 'Общие', title: name ? name[1].trim() : 'Неизвестный канал' };
+                current = { logo: logo ? logo[1] : '', group: group ? group[1] : 'Общие', title: name ? name[1].trim() : 'Неизвестный канал' };
             } else if (line.indexOf('http') === 0) {
                 current.url = line;
-                out.push({ id: 'm3u-' + out.length, title: current.title, url: current.url, quality: 'Live', voice: current.group, source: sourceName });
+                out.push({ id: 'm3u-' + out.length, title: current.title, url: current.url, quality: 'Live', voice: current.group, logo: current.logo, source: sourceName });
                 current = {};
             }
         }
@@ -530,7 +541,7 @@
             if (idx >= state.vod_urls.length) { vodCache = all; vodLoading = false; callback(all); return; }
             var item = state.vod_urls[idx++];
             if (item.type === 'direct') {
-                all.push({ id: 'vod-' + all.length, title: item.name, url: item.url, quality: '1080p', type: 'movie', source: item.name });
+                all.push({ id: 'vod-' + all.length, title: item.name, url: item.url, quality: '1080p', type: 'movie', source: item.name, logo: '' });
                 nextItem();
             } else {
                 fetchWithProxies(item.url, function (data) {
@@ -543,7 +554,7 @@
         nextItem();
     }
 
-    // ============ МЕНЮ / НАСТРОЙКИ / СТАРТ ============
+    // ============ МЕНЮ / СТАРТ ============
     var menuEl = null;
     function ensureMenu() {
         try {
@@ -634,17 +645,15 @@
             var cursor = 0, active = 0, results = [];
             function next() {
                 if (cursor >= list.length && active === 0) {
-                    // Дедупликация по отпечатку + сортировка
                     var seen = {}, uniq = [];
                     results.forEach(function (r) {
                         var key = [String(r.title).toLowerCase(), r.quality, String(r.voice).toLowerCase(), r.url].join('|');
                         if (!seen[key]) { seen[key] = true; uniq.push(r); }
                     });
+                    var qmap = { '4K': 2160, '2160p': 2160, '1440p': 1440, '1080p': 1080, '720p': 720, '480p': 480, 'Live': 1000 };
                     uniq.sort(function (a, b) {
                         var pa = state.sources[a.source_id] || {}, pb = state.sources[b.source_id] || {};
-                        var q = { '4K': 2160, '2160p': 2160, '1440p': 1440, '1080p': 1080, '720p': 720, '480p': 480, 'Live': 1000 };
-                        var qa = q[a.quality] || 0, qb = q[b.quality] || 0;
-                        return (pb.priority || 0) - (pa.priority || 0) || qb - qa;
+                        return (pb.priority || 0) - (pa.priority || 0) || (qmap[b.quality] || 0) - (qmap[a.quality] || 0);
                     });
                     callback({ results: uniq });
                     return;
