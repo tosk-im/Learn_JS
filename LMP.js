@@ -1,10 +1,13 @@
 (function () {
     'use strict';
-    console.log('[USM] Начало загрузки файла v1.3.1...');
+    console.log('[USM] Начало загрузки файла v1.3.2...');
 
     var NAME = 'lampa_usm_core';
-    var VERSION = '1.3.1';
+    var VERSION = '1.3.2';
     var STORAGE = 'lampa_usm_config_v3';
+    
+    // ⚠️ ВАЖНО: Измените эту ссылку на свой плейлист, когда всё заработает!
+    var IPTV_URL = 'https://iptv-org.github.io/iptv/playlists/ru.m3u';
 
     if (window[NAME]) { console.log('[USM] Плагин уже загружен.'); return; }
     window[NAME] = true;
@@ -109,7 +112,7 @@
 
     function settingsHTML() {
         var rows = providerRows();
-        var html = '<div class="usm-panel"><div class="usm-title">Universal Source Manager</div><div class="usm-subtitle">v' + VERSION + ' • навигация: стрелки + Enter (или клик мышью)</div>';
+        var html = '<div class="usm-panel"><div class="usm-title">Universal Source Manager</div><div class="usm-subtitle">v' + VERSION + ' • навигация: стрелки + Enter (или клик)</div>';
         if (!rows.length) {
             html += '<div class="usm-empty">Источники не подключены.</div>';
         } else {
@@ -184,7 +187,7 @@
     }
 
     // ==========================================
-    // ИНТЕГРАЦИЯ С ПЛЕЕРОМ (кнопка в карточке)
+    // ИНТЕГРАЦИЯ С ПЛЕЕРОМ
     // ==========================================
     var searchBusy = false;
 
@@ -251,7 +254,7 @@
     }
 
     // ==========================================
-    // ПАРСЕР IPTV (M3U)
+    // УЛУЧШЕННЫЙ ПАРСЕР IPTV (M3U) с 3 прокси
     // ==========================================
     var iptvCache = null;
     var iptvLoading = false;
@@ -273,8 +276,16 @@
                 current = {};
             }
         }
+        console.log('[USM] Распарсено каналов:', channels.length);
         return channels;
     }
+
+    // 3 разных прокси для надежности
+    var PROXY_LIST = [
+        function(url) { return url; }, // Прямой запрос
+        function(url) { return 'https://corsproxy.io/?' + encodeURIComponent(url); },
+        function(url) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url); }
+    ];
 
     function loadIPTV(callback) {
         if (iptvCache) { callback(iptvCache); return; }
@@ -283,21 +294,41 @@
             return;
         }
         iptvLoading = true;
-        var url = 'http://iptv.ipcom.info/tv.m3u';
+        
         var RequestClass = Lampa.Request || Lampa.Reguest;
-        var req = new RequestClass();
-        req.silent(url, function (data) {
-            iptvCache = parseM3U(data); iptvLoading = false;
-            console.log('[USM] IPTV загружено, каналов:', iptvCache.length);
-            callback(iptvCache);
-        }, function () {
-            var req2 = new RequestClass();
-            req2.silent('https://api.allorigins.win/raw?url=' + encodeURIComponent(url), function (data) {
-                iptvCache = parseM3U(data); iptvLoading = false;
-                console.log('[USM] IPTV загружено через прокси, каналов:', iptvCache.length);
-                callback(iptvCache);
-            }, function (err2) { iptvLoading = false; console.error('[USM] Ошибка загрузки IPTV:', err2); callback([]); });
-        });
+        var proxyIndex = 0;
+        
+        function tryNextProxy() {
+            if (proxyIndex >= PROXY_LIST.length) {
+                iptvLoading = false;
+                console.error('[USM] ❌ Все прокси не сработали. Используйте свой сервер.');
+                callback([]);
+                return;
+            }
+            
+            var proxyFn = PROXY_LIST[proxyIndex++];
+            var url = proxyFn(IPTV_URL);
+            
+            console.log('[USM] Пробую загрузку через прокси #' + proxyIndex + ':', url.substring(0, 60) + '...');
+            
+            var req = new RequestClass();
+            req.silent(url, function (data) {
+                if (data && data.length > 100) {
+                    iptvCache = parseM3U(data);
+                    iptvLoading = false;
+                    console.log('[USM] ✅ IPTV успешно загружено, каналов:', iptvCache.length);
+                    callback(iptvCache);
+                } else {
+                    console.warn('[USM] Пустой или короткий ответ от прокси #' + proxyIndex);
+                    tryNextProxy();
+                }
+            }, function (err) {
+                console.warn('[USM] Прокси #' + proxyIndex + ' не сработал:', err);
+                tryNextProxy();
+            });
+        }
+        
+        tryNextProxy();
     }
 
     // ==========================================
@@ -337,7 +368,7 @@
     // ==========================================
     register({
         id: 'iptv-com-provider',
-        title: '📺 IPTV Провайдер (ipcom)',
+        title: '📺 IPTV Провайдер',
         search: function (movie, done) {
             loadIPTV(function (channels) {
                 if (!channels || !channels.length) { done(null, []); return; }
