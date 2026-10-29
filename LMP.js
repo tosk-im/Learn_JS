@@ -1,6 +1,6 @@
 (function () {
     'use strict';
-    console.log('[USM] Начало загрузки файла v1.8.0...');
+    console.log('[USM] Начало загрузки файла v1.8.1...');
 
     var NAME = 'lampa_usm_core';
     var VERSION = '1.8.0';
