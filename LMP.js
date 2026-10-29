@@ -1,18 +1,23 @@
 (function () {
     'use strict';
-    console.log('[USM] Начало загрузки файла v1.3.2...');
+    console.log('[USM] Начало загрузки файла v1.4.0...');
 
     var NAME = 'lampa_usm_core';
-    var VERSION = '1.3.2';
-    var STORAGE = 'lampa_usm_config_v3';
-    
-    // ⚠️ ВАЖНО: Измените эту ссылку на свой плейлист, когда всё заработает!
-    var IPTV_URL = 'https://iptv-org.github.io/iptv/playlists/ru.m3u';
+    var VERSION = '1.4.0';
+    var STORAGE = 'lampa_usm_config_v4';
 
     if (window[NAME]) { console.log('[USM] Плагин уже загружен.'); return; }
     window[NAME] = true;
 
-    var DEFAULTS = { timeout: 5000, max_parallel: 4, min_quality: 0, sources: {}, health: {} };
+    var DEFAULTS = { 
+        timeout: 5000, 
+        max_parallel: 4, 
+        min_quality: 0, 
+        sources: {}, 
+        health: {},
+        iptv_urls: []  // Массив URL плейлистов
+    };
+
     var PRIO_LIST = [10, 50, 100, 150, 200, 300];
     var TIMEOUT_LIST = [2000, 5000, 8000, 10000, 15000, 30000];
     var PARALLEL_LIST = [1, 2, 4, 6, 8, 12];
@@ -31,7 +36,8 @@
                 max_parallel: Number(data.max_parallel) || DEFAULTS.max_parallel,
                 min_quality: Number(data.min_quality) || 0,
                 sources: data.sources || {},
-                health: data.health || {}
+                health: data.health || {},
+                iptv_urls: Array.isArray(data.iptv_urls) ? data.iptv_urls : []
             };
         } catch (e) { return copy(DEFAULTS); }
     }
@@ -112,17 +118,39 @@
 
     function settingsHTML() {
         var rows = providerRows();
-        var html = '<div class="usm-panel"><div class="usm-title">Universal Source Manager</div><div class="usm-subtitle">v' + VERSION + ' • навигация: стрелки + Enter (или клик)</div>';
+        var html = '<div class="usm-panel"><div class="usm-title">Universal Source Manager</div><div class="usm-subtitle">v' + VERSION + '</div>';
+        
+        // === СЕКЦИЯ IPTV ПЛЕЙЛИСТОВ ===
+        html += '<div class="usm-section-title">📺 IPTV Плейлисты</div>';
+        html += rowTpl('add-iptv', '', '➕ Добавить новый плейлист', 'Введите URL M3U плейлиста');
+        html += rowTpl('refresh-iptv', '', '🔄 Обновить кэш плейлистов', 'Скачать заново при изменении');
+        
+        if (state.iptv_urls.length === 0) {
+            html += '<div class="usm-empty-small">Плейлисты не добавлены</div>';
+        } else {
+            state.iptv_urls.forEach(function (url, index) {
+                var shortUrl = url.length > 50 ? url.substring(0, 50) + '...' : url;
+                html += rowTpl('remove-iptv', String(index), '📺 ' + shortUrl, 'Нажмите, чтобы удалить');
+            });
+        }
+        
+        html += '<div class="usm-sep"></div>';
+        
+        // === СЕКЦИЯ ИСТОЧНИКОВ ===
+        html += '<div class="usm-section-title">🎯 Источники</div>';
         if (!rows.length) {
             html += '<div class="usm-empty">Источники не подключены.</div>';
         } else {
             rows.forEach(function (row) {
-                html += rowTpl('toggle', row.id, (row.enabled ? '✅ ВКЛ — ' : '⛔ ВЫКЛ — ') + row.status.icon + ' ' + row.title, row.status.text + (row.status.ms ? ' · ' + row.status.ms : '') + ' · нажмите, чтобы переключить');
+                html += rowTpl('toggle', row.id, (row.enabled ? '✅ ВКЛ — ' : '⛔ ВЫКЛ — ') + row.status.icon + ' ' + row.title, row.status.text + (row.status.ms ? ' · ' + row.status.ms : ''));
                 html += rowTpl('prio', row.id, '⚙ Приоритет: ' + row.priority + ' — ' + row.title, 'Enter — сменить значение');
                 html += rowTpl('check', row.id, '🔍 Проверить: ' + row.title, 'Замерить время отклика');
             });
         }
         html += '<div class="usm-sep"></div>';
+        
+        // === ОБЩИЕ НАСТРОЙКИ ===
+        html += '<div class="usm-section-title">⚙️ Общие настройки</div>';
         html += rowTpl('check-all', '', '▶ Проверить все источники', 'Последовательная проверка');
         html += rowTpl('clear', '', '♻ Сбросить статусы', 'Очистить историю проверок');
         html += rowTpl('timeout', '', '⏱ Таймаут: ' + state.timeout + ' мс', 'Enter — сменить значение');
@@ -136,15 +164,73 @@
         if (document.getElementById('lampa-usm-style')) return;
         var style = document.createElement('style');
         style.id = 'lampa-usm-style';
-        style.textContent = '.usm-panel{padding:1.5em;color:#fff;font-size:1em}.usm-title{font-size:1.35em;font-weight:600;margin-bottom:.25em}.usm-subtitle{opacity:.6;margin-bottom:1em}.usm-row{display:flex;align-items:center;gap:.7em;padding:.9em .8em;margin-bottom:.4em;border-radius:.6em;background:rgba(255,255,255,.05);cursor:pointer}.usm-row.focus,.usm-row:hover{background:rgba(255,255,255,.16)}.usm-main{flex:1;min-width:0}.usm-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}.usm-meta{font-size:.8em;opacity:.55;margin-top:.25em}.usm-hint{opacity:.35;font-size:.8em}.usm-sep{height:1px;background:rgba(255,255,255,.1);margin:1em 0}.usm-empty{padding:2em 0;opacity:.65}';
+        style.textContent = '.usm-panel{padding:1.5em;color:#fff;font-size:1em}.usm-title{font-size:1.35em;font-weight:600;margin-bottom:.25em}.usm-subtitle{opacity:.6;margin-bottom:1em}.usm-section-title{font-size:1.05em;font-weight:600;opacity:.85;margin:1em 0 .6em 0;text-transform:uppercase;letter-spacing:.04em}.usm-row{display:flex;align-items:center;gap:.7em;padding:.9em .8em;margin-bottom:.4em;border-radius:.6em;background:rgba(255,255,255,.05);cursor:pointer}.usm-row.focus,.usm-row:hover{background:rgba(255,255,255,.16)}.usm-main{flex:1;min-width:0}.usm-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}.usm-meta{font-size:.8em;opacity:.55;margin-top:.25em}.usm-hint{opacity:.35;font-size:.8em}.usm-sep{height:1px;background:rgba(255,255,255,.1);margin:1em 0}.usm-empty{padding:2em 0;opacity:.65}.usm-empty-small{padding:.8em 1em;opacity:.5;font-size:.9em;font-style:italic}';
         document.head.appendChild(style);
+    }
+
+    // === ФУНКЦИИ УПРАВЛЕНИЯ ПЛЕЙЛИСТАМИ ===
+    function addIPTVPlaylist() {
+        var url = prompt('Введите URL M3U плейлиста:', 'https://');
+        if (!url) return;
+        
+        url = url.trim();
+        if (!url || !url.startsWith('http')) {
+            if (Lampa.Noty) Lampa.Noty.show('USM: Некорректный URL');
+            return;
+        }
+        
+        // Проверка на дубликаты
+        if (state.iptv_urls.indexOf(url) !== -1) {
+            if (Lampa.Noty) Lampa.Noty.show('USM: Этот плейлист уже добавлен');
+            return;
+        }
+        
+        state.iptv_urls.push(url);
+        save();
+        iptvCache = null; // Сбрасываем кэш
+        
+        if (Lampa.Noty) Lampa.Noty.show('USM: Плейлист добавлен!');
+        refreshSettings();
+    }
+
+    function removeIPTVPlaylist(index) {
+        var url = state.iptv_urls[index];
+        if (!url) return;
+        
+        var confirmMsg = confirm('Удалить плейлист?\n' + url);
+        if (!confirmMsg) return;
+        
+        state.iptv_urls.splice(index, 1);
+        save();
+        iptvCache = null; // Сбрасываем кэш
+        
+        if (Lampa.Noty) Lampa.Noty.show('USM: Плейлист удалён');
+        refreshSettings();
+    }
+
+    function refreshIPTVCache() {
+        iptvCache = null;
+        if (Lampa.Noty) Lampa.Noty.show('USM: Кэш сброшен. Плейлисты будут обновлены при следующем запросе.');
+        // Сбрасываем статусы IPTV-источников
+        if (state.health['iptv-com-provider']) {
+            delete state.health['iptv-com-provider'];
+            save();
+        }
+        refreshSettings();
     }
 
     function bindManagerEvents($html) {
         $html.find('.selector').on('hover:enter', function () {
             var act = this.getAttribute('data-act');
             var id = this.getAttribute('data-id');
-            if (act === 'toggle') {
+            
+            if (act === 'add-iptv') {
+                addIPTVPlaylist();
+            } else if (act === 'refresh-iptv') {
+                refreshIPTVCache();
+            } else if (act === 'remove-iptv') {
+                removeIPTVPlaylist(parseInt(id, 10));
+            } else if (act === 'toggle') {
                 var cfg = state.sources[id] || { enabled: true, priority: 100 };
                 setEnabled(id, cfg.enabled === false);
                 refreshSettings();
@@ -254,12 +340,12 @@
     }
 
     // ==========================================
-    // УЛУЧШЕННЫЙ ПАРСЕР IPTV (M3U) с 3 прокси
+    // УЛУЧШЕННЫЙ ПАРСЕР IPTV (поддержка нескольких URL)
     // ==========================================
     var iptvCache = null;
     var iptvLoading = false;
 
-    function parseM3U(content) {
+    function parseM3U(content, sourceName) {
         var lines = String(content).split('\n');
         var channels = [];
         var current = {};
@@ -272,17 +358,23 @@
                 current = { logo: logo ? logo[1] : '', group: group ? group[1] : 'Общие', title: name ? name[1].trim() : 'Неизвестный канал' };
             } else if (line.indexOf('http') === 0) {
                 current.url = line;
-                channels.push({ id: 'iptv-' + channels.length, title: current.title, url: current.url, quality: 'Live', voice: current.group, type: 'iptv', source: 'IPTV Провайдер' });
+                channels.push({ 
+                    id: 'iptv-' + channels.length, 
+                    title: current.title, 
+                    url: current.url, 
+                    quality: 'Live', 
+                    voice: current.group, 
+                    type: 'iptv', 
+                    source: sourceName 
+                });
                 current = {};
             }
         }
-        console.log('[USM] Распарсено каналов:', channels.length);
         return channels;
     }
 
-    // 3 разных прокси для надежности
     var PROXY_LIST = [
-        function(url) { return url; }, // Прямой запрос
+        function(url) { return url; },
         function(url) { return 'https://corsproxy.io/?' + encodeURIComponent(url); },
         function(url) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url); }
     ];
@@ -293,42 +385,68 @@
             var check = setInterval(function () { if (!iptvLoading) { clearInterval(check); callback(iptvCache || []); } }, 500);
             return;
         }
+        
+        if (!state.iptv_urls || state.iptv_urls.length === 0) {
+            callback([]);
+            return;
+        }
+        
         iptvLoading = true;
-        
         var RequestClass = Lampa.Request || Lampa.Reguest;
-        var proxyIndex = 0;
+        var allChannels = [];
+        var urlIndex = 0;
         
-        function tryNextProxy() {
-            if (proxyIndex >= PROXY_LIST.length) {
+        function processNextUrl() {
+            if (urlIndex >= state.iptv_urls.length) {
+                // Удаляем дубликаты по URL
+                var seen = {};
+                var unique = [];
+                allChannels.forEach(function(ch) {
+                    if (!seen[ch.url]) {
+                        seen[ch.url] = true;
+                        unique.push(ch);
+                    }
+                });
+                iptvCache = unique;
                 iptvLoading = false;
-                console.error('[USM] ❌ Все прокси не сработали. Используйте свой сервер.');
-                callback([]);
+                console.log('[USM] ✅ Все IPTV загружены, всего каналов:', unique.length);
+                callback(iptvCache);
                 return;
             }
             
-            var proxyFn = PROXY_LIST[proxyIndex++];
-            var url = proxyFn(IPTV_URL);
+            var currentUrl = state.iptv_urls[urlIndex++];
+            var proxyIndex = 0;
+            var sourceName = 'IPTV: ' + currentUrl.substring(0, 40);
             
-            console.log('[USM] Пробую загрузку через прокси #' + proxyIndex + ':', url.substring(0, 60) + '...');
-            
-            var req = new RequestClass();
-            req.silent(url, function (data) {
-                if (data && data.length > 100) {
-                    iptvCache = parseM3U(data);
-                    iptvLoading = false;
-                    console.log('[USM] ✅ IPTV успешно загружено, каналов:', iptvCache.length);
-                    callback(iptvCache);
-                } else {
-                    console.warn('[USM] Пустой или короткий ответ от прокси #' + proxyIndex);
-                    tryNextProxy();
+            function tryNextProxy() {
+                if (proxyIndex >= PROXY_LIST.length) {
+                    console.warn('[USM] ⚠ Не удалось загрузить: ' + currentUrl);
+                    processNextUrl();
+                    return;
                 }
-            }, function (err) {
-                console.warn('[USM] Прокси #' + proxyIndex + ' не сработал:', err);
-                tryNextProxy();
-            });
+                
+                var proxyFn = PROXY_LIST[proxyIndex++];
+                var url = proxyFn(currentUrl);
+                
+                var req = new RequestClass();
+                req.silent(url, function (data) {
+                    if (data && data.length > 100 && data.indexOf('#EXTINF') !== -1) {
+                        var channels = parseM3U(data, sourceName);
+                        allChannels = allChannels.concat(channels);
+                        console.log('[USM] ✅ Загружен плейлист, каналов:', channels.length);
+                        processNextUrl();
+                    } else {
+                        tryNextProxy();
+                    }
+                }, function () {
+                    tryNextProxy();
+                });
+            }
+            
+            tryNextProxy();
         }
         
-        tryNextProxy();
+        processNextUrl();
     }
 
     // ==========================================
@@ -341,7 +459,7 @@
             Lampa.SettingsApi.addComponent({ component: NAME, name: 'Менеджер источников', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z"/></svg>' });
             Lampa.SettingsApi.addParam({
                 component: NAME, param: { name: NAME + '_btn', type: 'button' },
-                field: { name: 'Открыть менеджер источников', description: 'Управление подключёнными источниками' },
+                field: { name: 'Открыть менеджер источников', description: 'Управление подключёнными источниками и IPTV' },
                 onRender: function (item) { if (item && typeof item.on === 'function') item.on('hover:enter click', openSettings); },
                 onChange: openSettings
             });
@@ -368,7 +486,7 @@
     // ==========================================
     register({
         id: 'iptv-com-provider',
-        title: '📺 IPTV Провайдер',
+        title: '📺 IPTV Плейлисты',
         search: function (movie, done) {
             loadIPTV(function (channels) {
                 if (!channels || !channels.length) { done(null, []); return; }
@@ -376,10 +494,14 @@
                 var results = channels.filter(function (ch) {
                     return ch.title.toLowerCase().indexOf(query) !== -1 || query.indexOf(ch.title.toLowerCase()) !== -1;
                 });
-                done(null, results.slice(0, 15));
+                done(null, results.slice(0, 20));
             });
         },
-        health: function (done) { loadIPTV(function (channels) { done(null, !!(channels && channels.length)); }); }
+        health: function (done) { 
+            loadIPTV(function (channels) { 
+                done(null, !!(channels && channels.length)); 
+            }); 
+        }
     });
 
     register({
