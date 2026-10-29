@@ -27,7 +27,7 @@
     'use strict';
 
     var NAME = 'lampa_universal_source_manager';
-    var VERSION = '1.0.0';
+    var VERSION = '1.1.0';
     var STORAGE = 'lampa_usm_config_v3';
 
     if (window[NAME]) return;
@@ -767,63 +767,46 @@
     };
 
     /*
-     * Lampa 3.x settings integration.
-     *
-     * We use SettingsApi rather than the old Lampa.Settings API.
-     * See Lampa 3.x migration documentation.
+     * Settings integration based on Lampa SettingsApi.
+     * The section contains a dedicated action that opens the manager panel.
      */
     function addSettings() {
-        if (!Lampa.SettingsApi) return;
+        if (!Lampa.SettingsApi || typeof Lampa.SettingsApi.addComponent !== 'function') {
+            if (Lampa.Noty) Lampa.Noty.show('USM: SettingsApi недоступен в этой версии Lampa');
+            return;
+        }
         if (window[NAME + '_settings']) return;
 
         window[NAME + '_settings'] = true;
 
         Lampa.SettingsApi.addComponent({
             component: NAME,
-            name: 'Universal Sources',
-            icon: ''
+            name: 'Менеджер источников',
+            icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z"/></svg>'
         });
 
-        if (Lampa.SettingsApi.addParam) {
+        if (typeof Lampa.SettingsApi.addParam === 'function') {
             Lampa.SettingsApi.addParam({
                 component: NAME,
                 param: {
-                    name: 'timeout',
-                    type: 'input',
-                    default: state.timeout
+                    name: NAME + '_open_manager',
+                    type: 'button'
                 },
                 field: {
-                    name: 'Таймаут источника, мс'
-                }
-            });
-
-            Lampa.SettingsApi.addParam({
-                component: NAME,
-                param: {
-                    name: 'max_parallel',
-                    type: 'input',
-                    default: state.max_parallel
+                    name: '<div class="settings-folder" style="padding:0!important"><div style="font-size:1.1em">Открыть менеджер источников</div><div style="opacity:.6;font-size:.85em">Настройка источников, приоритетов и проверка доступности</div></div>'
                 },
-                field: {
-                    name: 'Одновременных запросов'
-                }
-            });
-
-            Lampa.SettingsApi.addParam({
-                component: NAME,
-                param: {
-                    name: 'min_quality',
-                    type: 'input',
-                    default: state.min_quality
-                },
-                field: {
-                    name: 'Минимальное качество, p'
+                onChange: function () {
+                    openSettings();
                 }
             });
         }
     }
 
+    var started = false;
+
     function start() {
+        if (started) return;
+        started = true;
         addSettings();
 
         if (window.console) {
