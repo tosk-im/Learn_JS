@@ -469,8 +469,20 @@
     function playSource(item, movie) {
         if (!item || !item.url) return;
         closeUsmModal();
-        if (Lampa.Noty) Lampa.Noty.show('USM: запуск ' + item.title);
-        Lampa.Player.play({ url: item.url, title: item.title || (movie.title || movie.name || 'USM'), timeline: movie });
+        console.log('[USM] play:', item.url);
+        var file = {
+            title: item.title || (movie && movie.title) || 'USM',
+            url: item.url,
+            quality: item.quality || ''
+        };
+        try {
+            if (Lampa.Noty) Lampa.Noty.show('USM: запуск ' + file.title);
+            Lampa.Player.play(file);
+            if (typeof Lampa.Player.playlist === 'function') Lampa.Player.playlist([file]);
+        } catch (e) {
+            console.error('[USM] Ошибка плеера:', e);
+            if (Lampa.Noty) Lampa.Noty.show('USM: ошибка плеера — смотри консоль');
+        }
     }
 
     // ============ ЗАГРУЗЧИКИ M3U (с логотипами) ============
